@@ -7,6 +7,7 @@ import numpy as np
 
 from .download import load_sources
 from .paths import CONFIG, OUT, WORK
+from .spaces import GRID_SHAPE
 
 MNI_MIN, MNI_MAX = np.array([-96.0, -132.0, -78.0]), np.array([96.0, 96.0, 114.0])
 MAX_BYTES = 1_500_000
@@ -44,6 +45,31 @@ def main(argv=None) -> None:
         if not (OUT / m["file"]).exists():
             problems.append(f"{m['id']}: file missing {m['file']}")
     nc = sorted({m["source"] for m in meshes if licences.get(sources.get(m["source"], {}).get("license", ""), {}).get("nc")})
+    # individual scans (atlas-subject): an identifiable person's data, so beyond the licence and source checks a
+    # subject volume has to record how it was registered and that its face was removed
+    from .subject import MIN_SIMILARITY  # noqa: PLC0415
+    for sp in sorted((OUT / "volumes").glob("subject-*.json")):
+        s = json.loads(sp.read_text())
+        key = s.get("key", sp.stem)
+        src = sources.get(s.get("source"))
+        if src is None:
+            problems.append(f"{key}: unknown source '{s.get('source')}' (add subject_<id> to sources.yaml)")
+        elif src["license"] not in licences:
+            problems.append(f"{key}: licence '{src['license']}' not described in sources.yaml")
+        elif licences[src["license"]].get("nc") or licences[src["license"]].get("no_redistribution"):
+            problems.append(f"{key}: licence '{src['license']}' is restricted; a subject scan must be redistributable")
+        if not (OUT / s.get("file", "")).exists():
+            problems.append(f"{key}: file missing {s.get('file')}")
+        if s.get("shape") != list(GRID_SHAPE):
+            problems.append(f"{key}: not on the brain grid ({s.get('shape')})")
+        if not s.get("defaced"):
+            problems.append(f"{key}: NOT DEFACED -- an identifiable scan may not ship")
+        reg = s.get("registration") or {}
+        sim = (reg.get("similarity") or {}).get(str(reg.get("transform", "")).lower())
+        if sim is None:
+            problems.append(f"{key}: no registration similarity recorded")
+        elif sim < MIN_SIMILARITY:
+            problems.append(f"{key}: similarity to the template {sim} is under the {MIN_SIMILARITY} gate")
     # cord MRI (atlas-pam50): a second volume grid, not a mesh, so it needs its own licence/source check
     cord = {}
     cp = OUT / "volumes" / "cord.json"

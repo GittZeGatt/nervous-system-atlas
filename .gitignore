@@ -6,6 +6,8 @@ reference/
 pipeline/raw/
 pipeline/work/
 pipeline/qa/*.png
+# atlas-subject renders: an individual's scan, before and after defacing
+pipeline/qa/subjects/
 blender/work/
 
 # generated data (regenerable from pipeline + content, or `npm run data`)

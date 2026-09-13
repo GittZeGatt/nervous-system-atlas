@@ -57,6 +57,7 @@ slices to it.
 - **3D view.** Orbit, pan and zoom toward the cursor; click a mesh or the MRI slice to select, double-click to frame it; eight camera presets on keys `1`–`8`. Physically based materials with an anatomical palette, and a **Quality** switch for ambient occlusion, soft shadows and anti-aliasing.
 - **Slices.** Axial, coronal and sagittal with T1/T2, peel modes, arterial-territory tint, label outlines and an "all labels" paint; the cord MRI switches itself on as soon as a slice reaches the foramen magnum, names the spinal level under the cursor and lets you click one to select that cord segment.
 - **Syndrome mode.** `#/syndrome/<id>` dims the scene, highlights the involved structures, places the lesion marker and steps through the deficits; **Mirror** moves the lesion to the other side.
+- **Your own MRI.** A personal T1 scan can be registered into the atlas space and shown on the slices next to the template's T1/T2, with every mesh and label already lined up on it — see [Adding your own MRI](#adding-your-own-mri). Defaced before it ships, always.
 - **Two languages.** English and Turkish, switched with the **TR / EN** button or `L`, kept in the URL so a link opens in the language it was copied in.
 - **Everything addressable.** `#/structure/<id>`, `#/pathway/<id>`, `#/syndrome/<id>?step=n&side=l`, `#/topic/<id>`, `#/glossary`, `#/quiz`, `#/about`. Press `?` for the shortcuts.
 
@@ -102,6 +103,26 @@ This downloads several GB and takes a while. [Building the data](docs/pipeline.m
 optional extras and what each one needs. Obtaining the four restricted datasets of the full edition is covered
 in [the two editions](docs/editions.md).
 
+### Adding your own MRI
+
+The atlas is a template, and everything in it — meshes, label volumes, slices — lives on one MNI152NLin2009cAsym
+grid. A personal scan is therefore not something the atlas adapts *to*; it is carried *into* that frame, where the
+structures already line up, and appears in the contrast menu next to T1 and T2:
+
+```bash
+cd pipeline && uv sync --extra warp && cd ..                        # antspyx, for the registration
+uv run --project pipeline atlas-subject path/to/t1w.nii.gz --id me  # DICOM: run dcm2niix first
+```
+
+That does N4 bias correction, rigid + affine + **SyN** registration onto the atlas's own MNI T1w (affine alone
+leaves the gyri millimetres off the parcels; the deformable stage is what puts the cortical labels on *your*
+sulci), a resample onto the atlas grid, and **defacing** with a plane derived from the template's brain mask
+that cannot cut brain. Look at `pipeline/qa/subjects/me/` — especially `skin-front.png`, the skin surface seen
+from the front — before you share anything. The volume needs a `subject_me` entry in
+`pipeline/config/sources.yaml` (its licence and a line saying whose scan it is), and the three guards refuse a
+subject volume that is undefaced, unattributed or not redistributable. The scan itself never enters the
+repository. A shared link carries the choice: `#/slice?c=subject-me&ax=-2`.
+
 ## The two editions
 
 The atlas is built twice from the same tree.
@@ -142,7 +163,7 @@ All 825 entries' clinical prose is translated too, as overlays under `content/i1
 ```bash
 npm run check-tree                                # nothing private, restricted or generated is committed
 npm run typecheck
-npm test                                          # 47 unit tests
+npm test                                          # 48 unit tests
 npm run content:validate                          # schemas, cross-links, word minimums, spelling, coverage
 npm run citations:check
 node scripts/check-data.ts --all                  # both manifests: meshes, volumes, coordinates

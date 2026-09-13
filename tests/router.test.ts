@@ -7,6 +7,12 @@ describe('hash router', () => {
     expect(route).toEqual({ kind: 'structure', id: 'putamen-l' });
     expect(params).toEqual({ ax: 2, cor: 4, sag: -24, c: 't2w' });
   });
+  it('carries a subject scan as the contrast, and drops anything else', () => {
+    expect(parseHash('#/slice?c=subject-colin27').params.c).toBe('subject-colin27');
+    expect(parseHash('#/slice?c=subject-../x').params.c).toBeUndefined();
+    expect(parseHash('#/slice?c=flair').params.c).toBeUndefined();
+    expect(serialize({ kind: 'slice' }, { c: 'subject-colin27' })).toBe('#/slice?c=subject-colin27');
+  });
   it('parses syndrome step and tolerates junk', () => {
     expect(parseHash('#/syndrome/syn-wallenberg-lateral-medullary?step=2&ax=abc').route).toEqual({ kind: 'syndrome', id: 'syn-wallenberg-lateral-medullary', step: 2 });
     expect(parseHash('').route).toEqual({ kind: 'home' });

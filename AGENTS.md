@@ -71,13 +71,13 @@ only where restricted data was built. So a plain `npm run dev` or `npm run build
 ```bash
 npm run check-tree                                # nothing private, restricted or generated is committed
 npm run typecheck
-npm test                                          # 47 unit tests
+npm test                                          # 48 unit tests
 npm run content:validate                          # schemas, cross-links, word minimums, spelling, coverage
 npm run citations:check
 node scripts/check-data.ts --all                  # both manifests: meshes, volumes, coordinates
 npm run notice -- --check
 uv run --project pipeline atlas-qa                # the pipeline's own data gates
-npx playwright install chromium && npm run e2e    # 24 browser tests
+npx playwright install chromium && npm run e2e    # 25 browser tests
 npm run build                                     # ends in the redistribution gate
 python3 tools/i18n/prose.py check                 # Turkish overlays against the English entries
 ```
@@ -119,6 +119,16 @@ before a release. Run the whole list before anything is published.
   record with `insideOutShells` > 0. Check the sign of the volume before blaming the label or the triangle
   budget — both were blamed here first, wrongly. (Separately, cortical parcels are perforated by sulci in the
   label itself, and `AtlasSpec.fill_radius` closes that before meshing.)
+- **A subject scan ships only defaced, and the plane is chosen by face voxels.** `atlas-subject` carries an
+  individual's T1w into the atlas space (N4, rigid + affine + SyN, antspyx) and cuts it with one fixed
+  MNI-space shear plane, a facet of the template brain mask's convex hull, so it cannot touch brain. Score
+  that facet on the whole head and the neck wins: the plane goes near-horizontal and the orbits stay in.
+  Look at `pipeline/qa/subjects/<id>/skin-front.png` before releasing; `check-data`, `check-public` and
+  `atlas-qa` refuse an undefaced, unattributed or restricted subject volume. The similarity gate is loose
+  (0.5) on purpose — a sharp individual against the blurred average lands around 0.8 when the fit is right.
+- **A `?c=` link and the first paint race.** Both load a contrast; `loadContrast` applies a texture only if
+  it is still the chosen one, and one fetch per contrast is shared. Before that the slower T1 clobbered the
+  linked contrast.
 - **One e2e test is timing-sensitive.** `interaction budget` measures frame pacing and can fail on a loaded
   machine. Re-run it alone before believing it.
 - **`npm run e2e` needs a dev server with data**, except `e2e/no-data.spec.ts`, which fakes the missing
@@ -141,6 +151,12 @@ Licence texts are the header (name, url, attribution) plus the verbatim legal co
 licence because they arrive from the same place** — that is a real mistake this repository has already made
 and corrected. Check for a per-file sidecar or a deposit record upstream, and if nobody states a licence, say
 so in the licence name rather than guessing.
+
+An individual's MRI is a data source too. Add `subject_<id>` (group `subjects`, `generated: true`, a
+redistributable licence, a citation that says whose scan it is and that they agreed to publish it), then
+`uv run --project pipeline atlas-subject scan.nii.gz --id <id>` (needs `uv sync --extra warp`), look at
+`pipeline/qa/subjects/<id>/`, and run `atlas-manifest`, `npm run notice`, `npm run build` as above. The scan
+itself never enters the repository: `raw/` and `public/data/` are ignored and `check-tree` refuses `.nii`.
 
 ## Releasing
 

@@ -14,7 +14,25 @@ same tree, so a change to any one of the three can move the version.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **An individual's MRI as a slice contrast.** `atlas-subject scan.nii.gz --id <id>` carries a personal T1w
+  into the atlas space — N4, rigid + affine + SyN onto the atlas's MNI T1w with the metric confined to the
+  brain mask, a resample onto the 193×229×193 grid — defaces it with a fixed MNI-space shear plane derived
+  from the template brain mask (a convex-hull facet, so it cannot cut brain; chosen by face voxels, because
+  scoring the whole head left the orbits in), windows it like the template and writes
+  `volumes/subject-<id>.u8.bin` with a sidecar recording tool, transform, similarity before and after SyN and
+  the defacing. The manifest lists it under `kind: "subject"` with its own source and licence; the viewer's
+  contrast menu shows every subject scan after T1 and T2, `t` cycles through them, and `?c=subject-<id>`
+  links work. `check-data`, `check-public` and `atlas-qa` refuse a subject volume that is undefaced,
+  unattributed or under a restricted licence. QA renders in `pipeline/qa/subjects/<id>/` include the skin
+  surface seen from the front.
+
+### Fixed
+
+- A `?c=` link no longer loses to the first paint: two contrast loads were in flight and the slower one
+  (usually T1) replaced the linked one. A texture is now applied only if it is still the chosen contrast, and
+  one fetch per contrast is shared.
 
 ## [1.0.2] - 2026-09-10
 

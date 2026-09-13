@@ -73,7 +73,7 @@ export const tr: Record<keyof typeof en, string> = {
   'help.title': 'Kısayollar',
   'help.slices': 'aksiyal / koronal / sagital kesiti aç-kapat',
   'help.move': 'son kullanılan kesiti kaydır',
-  'help.contrast': 'T1 / T2',
+  'help.contrast': 'T1 / T2 / kendi MR\'ınız',
   'help.peel': 'a / c / s ile en son açılan kesitten soy (her kaydırıcının kendi soyma menüsü de var)',
   'help.panels': 'panelleri aç-kapat',
   'help.search': 'ara',

@@ -8,6 +8,9 @@ def download():
 def volumes():
     from .volumes import main; main()
 
+def subject():
+    from .subject import main; main()
+
 def bp3d_select():
     from .bp3d import main_select; main_select()
 

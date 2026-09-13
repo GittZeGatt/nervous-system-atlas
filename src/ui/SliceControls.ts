@@ -1,9 +1,9 @@
 import type { App } from '../app.ts';
-import type { Axis } from '../types/state.ts';
+import type { Axis, Contrast } from '../types/state.ts';
 import { h } from './dom.ts';
 import { t, type Key } from '../i18n/index.ts';
 import { axisExtentMm } from '../volume/coords.ts';
-import { setContrast, setPeel, setSliceVisible, setSlices } from '../state/actions.ts';
+import { contrasts, setContrast, setPeel, setSliceVisible, setSlices } from '../state/actions.ts';
 
 const AXES: { axis: Axis; label: Key; key: string; positive: Key; negative: Key }[] = [
   { axis: 'axial', label: 'slice.axial', key: 'a', positive: 'slice.peel.above', negative: 'slice.peel.below' },
@@ -37,8 +37,15 @@ export class SliceControls {
         { el: noPeel, text: 'slice.peel.none' }, { el: posPeel, text: a.positive }, { el: negPeel, text: a.negative });
       bar.append(h('label', { class: 'slice-ctl' }, cb, lbl, sl, num, unit, peel));
     }
+    // the template's T1 and T2, then every individual scan the manifest carries (atlas-subject); those are named
+    // by their source entry rather than the string table, and the tooltip says how they were registered
     const t1 = h('option', { value: 't1w' }); const t2 = h('option', { value: 't2w' });
-    const contrast = h('select', { class: 'contrast', onchange: (e: Event) => setContrast(app, (e.target as HTMLSelectElement).value as 't1w' | 't2w') }, t1, t2);
+    const subjects = contrasts(app).filter((k) => k !== 't1w' && k !== 't2w').map((k) => {
+      const v = app.manifest.volumes[k]!;
+      const reg = v.registration; const sim = reg?.similarity?.[reg.transform.toLowerCase()];
+      return h('option', { value: k, title: reg ? `${reg.tool}, ${reg.transform}${sim !== undefined ? `, r = ${sim.toFixed(2)} to the template` : ''}${v.defaced ? ', defaced' : ''}` : '' }, v.name ?? k);
+    });
+    const contrast = h('select', { class: 'contrast', onchange: (e: Event) => setContrast(app, (e.target as HTMLSelectElement).value as Contrast) }, t1, t2, ...subjects);
     const opacity = h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: app.store.get().overlay.opacity,
       oninput: (e: Event) => app.store.set({ overlay: { ...app.store.get().overlay, opacity: Number((e.target as HTMLInputElement).value) } }) });
     const all = h('input', { type: 'checkbox', onchange: (e: Event) => app.store.set({ overlay: { ...app.store.get().overlay, showAllLabels: (e.target as HTMLInputElement).checked } }) });

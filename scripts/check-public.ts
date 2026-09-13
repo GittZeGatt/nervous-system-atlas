@@ -94,7 +94,7 @@ const exFiles = new Set([...ex.meshes.flatMap((m) => m.files), ...ex.volumes.fla
 type Manifest = {
   edition?: string;
   meshes: { id: string; file: string; license: string; source: string; nc?: boolean; lod?: { file: string } }[];
-  volumes: Record<string, { file: string; lut?: string; space?: string }>;
+  volumes: Record<string, { file: string; lut?: string; space?: string; kind?: string; source?: string; license?: string; defaced?: boolean }>;
   grids?: Record<string, { license: string }>;
   licenses: Record<string, { text: string; nc?: boolean; noRedistribution?: boolean }>;
   sources: Record<string, { license: string }>;
@@ -111,7 +111,14 @@ for (const m of man.meshes) {
   if (!man.licenses[m.license]) bad(`mesh ${m.id} references a licence that is not in the manifest (${m.license})`);
   if (!man.sources[m.source]) bad(`mesh ${m.id} references a source that is not in the manifest (${m.source})`);
 }
-for (const [k, v] of Object.entries(man.volumes)) if (v.space && !man.grids?.[v.space]) bad(`volume ${k} sits on the dropped grid "${v.space}"`);
+for (const [k, v] of Object.entries(man.volumes)) {
+  if (v.space && !man.grids?.[v.space]) bad(`volume ${k} sits on the dropped grid "${v.space}"`);
+  // a volume with its own attribution (an individual's scan from atlas-subject) is judged like a mesh, and an
+  // individual's scan additionally may not leave without its face removed
+  if (v.source && !man.sources[v.source]) bad(`volume ${k} references a source that is not in the manifest (${v.source})`);
+  if (v.license && !man.licenses[v.license]) bad(`volume ${k} references a licence that is not in the manifest (${v.license})`);
+  if (v.kind === 'subject' && !v.defaced) bad(`volume ${k} is an individual's scan that was not defaced`);
+}
 
 const allowed = new Set<string>(['manifest.json', 'content.json', 'content.tr.json', 'search-index.json', 'LICENSE']);
 for (const m of man.meshes) { allowed.add(m.file); if (m.lod) allowed.add(m.lod.file); }

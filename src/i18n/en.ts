@@ -76,7 +76,7 @@ export const en = {
   'help.title': 'Shortcuts',
   'help.slices': 'toggle axial / coronal / sagittal slice',
   'help.move': 'move the last touched slice',
-  'help.contrast': 'T1 / T2',
+  'help.contrast': 'T1 / T2 / your scan',
   'help.peel': 'peel at the last slice toggled with a / c / s (each slider also has a peel menu)',
   'help.panels': 'toggle panels',
   'help.search': 'search',

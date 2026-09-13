@@ -473,3 +473,27 @@ test('the L shortcut switches language and the choice survives a reload', async 
   await expect(page.locator('html')).toHaveAttribute('lang', 'tr');
   await page.evaluate(() => localStorage.setItem('atlas.locale', 'en'));
 });
+
+test('the contrast menu lists the T1, the T2 and every subject scan, and a linked contrast survives the first paint', async ({ page }) => {
+  test.setTimeout(180_000);
+  type Win = { atlas: { manifest: { volumes: Record<string, { kind?: string; file: string }> }; store: { get(): { contrast: string; loaded: { volume: boolean } } }; uniforms: { uIntensity: { value: { image: { width: number } } } } } };
+  await boot(page, '#/slice?c=t2w&ax=-2');
+  const keys = await page.evaluate(() => { const v = (window as unknown as Win).atlas.manifest.volumes; return Object.keys(v).filter((k) => k === 't1w' || k === 't2w' || v[k]!.kind === 'subject'); });
+  await expect.poll(() => page.locator('select.contrast option').evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value))).toEqual(keys);
+  // the link chose T2; the T1 of the first paint must not replace it once both have arrived
+  await page.waitForFunction(() => (window as unknown as Win).atlas.store.get().loaded.volume === true, null, { timeout: 120_000 });
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => (window as unknown as Win).atlas.store.get().contrast)).toBe('t2w');
+  const subject = keys.find((k) => k.startsWith('subject-'));
+  if (subject) {
+    // an individual's scan: selectable from the menu, on the brain grid, and its option says how it was registered
+    await page.selectOption('select.contrast', subject);
+    await expect.poll(() => page.evaluate(() => (window as unknown as Win).atlas.store.get().contrast)).toBe(subject);
+    await expect(page.locator(`select.contrast option[value="${subject}"]`)).toHaveAttribute('title', /SyN|Affine/);
+    await expect.poll(() => page.evaluate(() => location.hash)).toContain(`c=${subject}`);
+  }
+  // a scan this bundle does not carry is ignored rather than breaking the slices
+  await page.evaluate(() => { location.hash = '#/slice?c=subject-nobody&ax=-2'; });
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => (window as unknown as Win).atlas.store.get().contrast)).toBe(subject ?? 't2w');
+});

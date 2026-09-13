@@ -126,7 +126,14 @@ export function setSliceVisible(app: App, axis: Axis, v: boolean): void {
   app.store.set({ slices: { ...s.slices, visible: { ...s.slices.visible, [axis]: v } } });
 }
 
-export function setContrast(app: App, c: Contrast): void { app.store.set({ contrast: c }); }
+/** A contrast this edition does not ship (a `?c=subject-…` link opened against a bundle without that scan) is ignored. */
+export function setContrast(app: App, c: Contrast): void { if (app.manifest.volumes[c]) app.store.set({ contrast: c }); }
+
+/** The intensity contrasts in menu order: the template's T1 and T2, then every subject scan the manifest carries. */
+export function contrasts(app: App): Contrast[] {
+  const subjects = Object.entries(app.manifest.volumes).filter(([k, v]) => v.kind === 'subject' && k.startsWith('subject-')).map(([k]) => k as Contrast);
+  return (['t1w', 't2w'] as Contrast[]).filter((k) => app.manifest.volumes[k]).concat(subjects);
+}
 
 export function setPeel(app: App, axis: Axis, side: 'positive' | 'negative' | null): void {
   const peel = { ...app.store.get().peel };

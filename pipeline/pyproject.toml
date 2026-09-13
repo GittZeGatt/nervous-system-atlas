@@ -25,6 +25,7 @@ warp = ["antspyx==0.6.3"]
 [project.scripts]
 atlas-download = "atlas_pipeline.cli:download"
 atlas-volumes = "atlas_pipeline.cli:volumes"
+atlas-subject = "atlas_pipeline.cli:subject"
 atlas-bp3d-select = "atlas_pipeline.cli:bp3d_select"
 atlas-register = "atlas_pipeline.cli:register"
 atlas-bp3d-meshes = "atlas_pipeline.cli:bp3d_meshes"

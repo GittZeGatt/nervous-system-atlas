@@ -2,7 +2,9 @@ import type { SystemId } from './manifest.ts';
 import { getLocale, type Locale } from '../i18n/index.ts';
 
 export type Axis = 'axial' | 'coronal' | 'sagittal';
-export type Contrast = 't1w' | 't2w';
+/** a key of manifest.volumes: the template's T1/T2, or an individual's scan (`subject-<id>`, atlas-subject) */
+export type Contrast = 't1w' | 't2w' | `subject-${string}`;
+export const isContrast = (v: unknown): v is Contrast => v === 't1w' || v === 't2w' || (typeof v === 'string' && /^subject-[a-z0-9-]+$/.test(v));
 export type PresetName = 'lateral-r' | 'lateral-l' | 'medial-r' | 'medial-l' | 'anterior' | 'posterior' | 'superior' | 'inferior';
 export type ContentTab = 'overview' | 'anatomy' | 'connections' | 'function' | 'blood' | 'imaging' | 'clinical' | 'pitfalls' | 'citations';
 

@@ -1,5 +1,5 @@
 import type { Store } from '../state/store.ts';
-import type { AppState, Axis } from '../types/state.ts';
+import { isContrast, type AppState, type Axis, type Contrast } from '../types/state.ts';
 import type { Locale } from '../i18n/index.ts';
 
 export type Route =
@@ -13,7 +13,7 @@ export type Route =
   | { kind: 'about' }
   | { kind: 'slice' };
 
-export interface RouteParams { ax?: number; cor?: number; sag?: number; c?: 't1w' | 't2w'; side?: 'l' | 'r'; lang?: Locale }
+export interface RouteParams { ax?: number; cor?: number; sag?: number; c?: Contrast; side?: 'l' | 'r'; lang?: Locale }
 
 export function parseHash(hash: string): { route: Route; params: RouteParams } {
   const h = hash.replace(/^#\/?/, '');
@@ -21,7 +21,7 @@ export function parseHash(hash: string): { route: Route; params: RouteParams } {
   const q = new URLSearchParams(query);
   const num = (k: string): number | undefined => { const v = q.get(k); if (v === null) return undefined; const n = Number(v); return Number.isFinite(n) ? n : undefined; };
   const params: RouteParams = { ax: num('ax'), cor: num('cor'), sag: num('sag') };
-  const c = q.get('c'); if (c === 't1w' || c === 't2w') params.c = c;
+  const c = q.get('c'); if (isContrast(c)) params.c = c;
   const side = q.get('side'); if (side === 'l' || side === 'r') params.side = side;
   const lang = q.get('lang'); if (lang === 'en' || lang === 'tr') params.lang = lang;
   const seg = (path ?? '').split('/').filter(Boolean);
@@ -71,7 +71,7 @@ export function bindRouter(store: Store<AppState>, handlers: { onRoute(route: Ro
     timer = window.setTimeout(() => {
       const [sel, syn, step, ax, cor, sag, c, side, panel, locale] = v;
       const route: Route = syn ? { kind: 'syndrome', id: syn, step: step >= 0 ? step : undefined } : panel?.kind === 'quiz' ? { kind: 'quiz', index: panel.index } : panel?.kind === 'glossary' ? { kind: 'glossary', id: panel.id ?? undefined } : panel?.kind === 'topic' ? { kind: 'topic', id: panel.id ?? undefined } : panel?.kind === 'about' ? { kind: 'about' } : sel ? { kind: 'structure', id: sel } : { kind: 'slice' };
-      const hash = serialize(route, { ax, cor, sag, c: c === 't2w' ? 't2w' : undefined, side: syn && side ? side : undefined, lang: locale === 'en' ? undefined : locale });
+      const hash = serialize(route, { ax, cor, sag, c: c !== 't1w' ? c : undefined, side: syn && side ? side : undefined, lang: locale === 'en' ? undefined : locale });
       if (location.hash !== hash) history.replaceState(null, '', hash);
     }, 150);
   }, (a, b) => a.every((x, i) => x === b[i] || (i === 8 && JSON.stringify(x) === JSON.stringify(b[i]))));

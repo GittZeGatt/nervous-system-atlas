@@ -356,6 +356,17 @@ def main(argv=None) -> None:
     # volume set with its own affine; absent until atlas-pam50 has run.
     cord_path = VOLUMES / "cord.json"
     cord = json.loads(cord_path.read_text()) if cord_path.exists() else None
+    # individual scans (atlas-subject): one volumes/subject-<id>.json each, on the brain grid, carrying their
+    # own source and licence -- the viewer lists them in the contrast menu next to T1 and T2, and
+    # filter_public() judges them by that licence like any other volume. Only the fields the app and the
+    # guards need travel; the run record stays in the sidecar.
+    subjects = {}
+    for p in sorted(VOLUMES.glob("subject-*.json")):
+        s = json.loads(p.read_text())
+        subjects[s["key"]] = {**{k: s[k] for k in ("file", "dtype", "shape", "bytes_raw", "bytes_gz", "sha256", "window", "level",
+                                                     "source_window", "kind", "name", "source", "license") if k in s},
+                              "registration": {k: s["registration"][k] for k in ("tool", "transform", "similarity") if k in s["registration"]},
+                              "defaced": bool(s.get("defaced"))}
     if cord and "labels_spine" in cord["contrasts"] and (VOLUMES / "labels_spine.json").exists():
         cord["contrasts"]["labels_spine"]["lut"] = "volumes/labels_spine.json"   # spinal-level LUT (atlas-pam50)
     # the data folder carries its own licence (CC BY-SA 4.0 + what it covers and how the sources were changed)
@@ -391,12 +402,13 @@ def main(argv=None) -> None:
         restricted = {m["license"] for m in out_meshes if _restricted(m["license"])}
         if cord and _restricted(cord.get("license", "")):
             restricted.add(cord["license"])
+        restricted |= {v["license"] for v in subjects.values() if _restricted(v["license"])}
         manifest = {
             "schema": 1, "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "space": "MNI152NLin2009cAsym",
             "edition": "private" if restricted else "public",
             "grid": {"shape": volume["shape"], "spacing": volume["spacing"], "origin_ras": volume["origin_ras"], "affine_ras": volume["affine_ras"]},
             "volumes": {**volume["contrasts"], **{k: {**v, "lut": "volumes/labels.json"} for k, v in labels["volumes"].items()},
-                        **(cord["contrasts"] if cord else {})},
+                        **(cord["contrasts"] if cord else {}), **subjects},
             "grids": {"cord": {k: cord[k] for k in ("shape", "spacing", "origin_ras", "affine_ras", "source", "license", "reformat")}} if cord else {},
             "transforms": transforms,
             "systems": [{"id": s[0], "name": s[1], "colour": s[2], "defaultVisible": s[3]} for s in catalog.SYSTEMS],
@@ -406,7 +418,8 @@ def main(argv=None) -> None:
             # licence id and the download URLs the files actually came from (url = the dataset's landing/first URL).
             "sources": {s["id"]: source_record(s, lock)
                         for s in cfg["sources"] if any(m["source"] == s["id"] for m in meshes) or s["id"] == "mni_t1w"
-                        or (cord is not None and s["id"] == cord.get("source"))},
+                        or (cord is not None and s["id"] == cord.get("source"))
+                        or any(v["source"] == s["id"] for v in subjects.values())},
             "meshes": out_meshes,
         }
         return manifest, out_meshes

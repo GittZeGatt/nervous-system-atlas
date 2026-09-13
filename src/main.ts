@@ -23,9 +23,9 @@ import { makeIntensityTexture, makeLabelTexture } from './volume/textures.ts';
 import { gridBoxMm, mmToVoxel } from './volume/coords.ts';
 import { indexSpineLut, loadSpineLut, spineLevelAt, spineLevelLabel, spineMask } from './volume/spineLabels.ts';
 import type { SystemId } from './types/manifest.ts';
-import type { Axis } from './types/state.ts';
+import type { Axis, Contrast } from './types/state.ts';
 import { PRESETS } from './scene/cameraPresets.ts';
-import { applyCameraPreset, setContrast, setSliceVisible, setPeel } from './state/actions.ts';
+import { applyCameraPreset, contrasts, setContrast, setSliceVisible, setPeel } from './state/actions.ts';
 import { sameSet } from './state/actions.ts';
 import { bindRouter } from './router/hashRouter.ts';
 import type { ContentBundle } from './types/content.ts';
@@ -311,7 +311,7 @@ async function boot(): Promise<void> {
   // ---- volumes (T1 first, then labels) in the background
   void (async () => {
     try {
-      await loadContrast(app, 't1w', progress);
+      await loadContrast(app, app.store.get().contrast, progress);   // the link may already have chosen one
       app.store.set({ loaded: { ...app.store.get().loaded, volume: true } });
       const sl = app.store.get().slices; app.store.set({ slices: { ...sl } }); for (const ax of ['axial', 'coronal', 'sagittal'] as Axis[]) app.slices[ax].setVisible(sl.visible[ax]);
       app.sm.requestRender();
@@ -343,7 +343,7 @@ async function boot(): Promise<void> {
       case 's': lastAxis = 'sagittal'; setSliceVisible(app, 'sagittal', !s.slices.visible.sagittal); break;
       case 'ArrowUp': setSlices(app, { [lastAxis]: s.slices[lastAxis] + (e.shiftKey ? 5 : 1) }); e.preventDefault(); break;
       case 'ArrowDown': setSlices(app, { [lastAxis]: s.slices[lastAxis] - (e.shiftKey ? 5 : 1) }); e.preventDefault(); break;
-      case 't': setContrast(app, s.contrast === 't1w' ? 't2w' : 't1w'); break;
+      case 't': { const all = contrasts(app); setContrast(app, all[(all.indexOf(s.contrast) + 1) % all.length] ?? 't1w'); break; }
       case 'p': setPeel(app, lastAxis, s.peel[lastAxis] ? null : 'positive'); break;   // the slice last toggled with a / c / s
       case '[': togglePanel('left'); break;
       case ']': togglePanel('right'); break;
@@ -367,15 +367,21 @@ function meshVisible(app: App, id: string): boolean {
   return s.visibleSystems.has(m.system) && m.visible;
 }
 
-async function loadContrast(app: App, c: 't1w' | 't2w', progress: HTMLElement): Promise<void> {
-  const cache = (app as unknown as { texCache?: Record<string, THREE.Texture> });
-  cache.texCache ??= {};
+async function loadContrast(app: App, c: Contrast, progress: HTMLElement): Promise<void> {
+  const cache = (app as unknown as { texCache?: Record<string, THREE.Texture>; texInflight?: Record<string, Promise<void>> });
+  cache.texCache ??= {}; cache.texInflight ??= {};
   if (!cache.texCache[c]) {
-    const meta = app.manifest.volumes[c]!;
-    const vol = await loadRawVolume(meta, (f) => (progress.style.transform = `scaleX(${f})`));
-    cache.texCache[c] = makeIntensityTexture(vol);
-    progress.style.transform = 'scaleX(0)';
+    const meta = app.manifest.volumes[c];
+    if (!meta) { setContrast(app, 't1w'); return; }   // a subject scan this bundle does not carry
+    // one fetch per contrast, however many callers ask while it is on its way
+    cache.texInflight[c] ??= loadRawVolume(meta, (f) => (progress.style.transform = `scaleX(${f})`)).then((vol) => {
+      cache.texCache![c] = makeIntensityTexture(vol);
+      progress.style.transform = 'scaleX(0)';
+    }).finally(() => { delete cache.texInflight![c]; });
+    await cache.texInflight[c];
   }
+  // two loads can be in flight -- the first paint's and a link's `?c=` -- and the slower one must not win
+  if (app.store.get().contrast !== c) return;
   app.uniforms.uIntensity.value = cache.texCache[c]!;
   app.sm.requestRender();
 }

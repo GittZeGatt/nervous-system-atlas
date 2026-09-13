@@ -68,7 +68,8 @@ async function check(manifestPath: string): Promise<number> {
     if (!manifest.licenses[m.license]) { console.error(`${m.id}: unknown licence ${m.license}`); errors++; }
   }
   // volumes: the payload must gunzip to exactly shape[0]*shape[1]*shape[2] samples of the declared dtype
-  type Vol = { file: string; dtype: string; shape: number[]; bytes_raw?: number; space?: string; spacing?: number[]; affine_ras?: number[][]; lut?: string; edition?: string };
+  type Vol = { file: string; dtype: string; shape: number[]; bytes_raw?: number; space?: string; spacing?: number[]; affine_ras?: number[][]; lut?: string; edition?: string;
+    kind?: string; source?: string; license?: string; registration?: { transform?: string }; defaced?: boolean };
   let volBytes = 0;
   const spineIdsInVolume = new Set<number>();
   for (const [k, v] of Object.entries(manifest.volumes as Record<string, Vol>)) {
@@ -92,6 +93,15 @@ async function check(manifestPath: string): Promise<number> {
     } else if (JSON.stringify(v.shape) !== JSON.stringify(manifest.grid.shape) && !v.spacing) {
       console.error(`volume ${k}: shape ${v.shape} is neither the brain grid nor a declared second grid`); errors++;
     }
+    // an individual's scan (atlas-subject): on the brain grid, attributed like a mesh, and never with a face
+    if (v.kind === 'subject') {
+      if (!k.startsWith('subject-')) { console.error(`volume ${k}: kind "subject" but the key is not subject-<id>`); errors++; }
+      if (JSON.stringify(v.shape) !== JSON.stringify(manifest.grid.shape)) { console.error(`volume ${k}: a subject scan must be on the brain grid`); errors++; }
+      if (!v.source || !manifest.sources[v.source]) { console.error(`volume ${k}: source ${v.source ?? '(none)'} is not in manifest.sources`); errors++; }
+      if (!v.license || !manifest.licenses[v.license]) { console.error(`volume ${k}: licence ${v.license ?? '(none)'} is not in manifest.licenses`); errors++; }
+      if (!v.registration?.transform) { console.error(`volume ${k}: no registration record`); errors++; }
+      if (!v.defaced) { console.error(`volume ${k}: not defaced -- an identifiable scan may not ship`); errors++; }
+    } else if (v.source && !manifest.sources[v.source]) { console.error(`volume ${k}: source ${v.source} is not in manifest.sources`); errors++; }
   }
   // the spinal-level LUT: every id in labels_spine.u8.bin must resolve to a level whose cord segment block is
   // a real mesh, so a level painted on a slice can be clicked into a selection. Both editions ship one -- the

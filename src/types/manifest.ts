@@ -47,6 +47,15 @@ export interface VolumeFile {
   space?: 'cord';
   origin_ras?: [number, number, number];
   affine_ras?: number[][];
+  /** an individual's scan registered into the atlas space by atlas-subject; listed in the contrast menu */
+  kind?: 'subject';
+  /** display name of a subject volume (from its source entry) */
+  name?: string;
+  /** source id and licence of a volume that has its own (subject volumes; the template volumes are mni_t1w) */
+  source?: string;
+  license?: string;
+  registration?: { tool: string; transform: string; similarity: Record<string, number> };
+  defaced?: boolean;
 }
 
 /** A volume grid other than the 193x229x193 brain box. */

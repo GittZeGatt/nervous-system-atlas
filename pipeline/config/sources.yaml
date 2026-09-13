@@ -576,6 +576,24 @@ sources:
         dest: BrainstemNavigatorv1.0.zip
         unzip: true
 
+  # ---------------- individual scans (atlas-subject) ----------------
+  # A personal T1w MRI shown next to the template's T1/T2: `uv run atlas-subject scan.nii.gz --id <id>` registers
+  # it into the atlas space (rigid + affine + SyN), defaces it with a fixed MNI-space plane and writes
+  # volumes/subject-<id>.u8.bin. The entry here is `subject_<id>`: it is where the licence and the consent
+  # statement live, and what NOTICE and the About panel print. `generated: true` because nothing is downloaded --
+  # the scan is placed by hand and only its defaced, registered derivative ever ships. The licence must be one
+  # that may be redistributed (the volume goes into the public bundle), and the citation must say whose scan
+  # it is and that they agreed to publish it. Only ever list a scan you have the right to release.
+  # The step was exercised on Colin27 (TemplateFlow tpl-MNIColin27_T1w, MNI licence; Holmes CJ et al. J Comput
+  # Assist Tomogr 1998;22:324-333), rotated, shifted and resampled to stand in for a native scan; that entry is
+  # not shipped and looked like this:
+  #   - id: subject_colin27
+  #     name: "Colin27 (a single subject's averaged T1w, Holmes 1998)"
+  #     group: subjects
+  #     license: MNI
+  #     generated: true
+  #     citation: "Holmes CJ, ... TemplateFlow tpl-MNIColin27_T1w, used as a stand-in individual."
+
   # ---------------- terminology (Turkish edition) ----------------
   # Not meshes or volumes: the Latin structure names and Turkish search synonyms in content/data/ come from these,
   # through tools/i18n/terms.py (fetch / table / apply).  `api` sources are queried live and cached under
