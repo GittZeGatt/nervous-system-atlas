@@ -65,7 +65,7 @@ def main(argv=None) -> None:
         if not s.get("defaced"):
             problems.append(f"{key}: NOT DEFACED -- an identifiable scan may not ship")
         reg = s.get("registration") or {}
-        sim = (reg.get("similarity") or {}).get(str(reg.get("transform", "")).lower())
+        sim = (reg.get("similarity") or {}).get("deformable")
         if sim is None:
             problems.append(f"{key}: no registration similarity recorded")
         elif sim < MIN_SIMILARITY:

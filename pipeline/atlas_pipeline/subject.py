@@ -12,7 +12,7 @@ What happens to the scan:
      that looks most like a whole-head 3D T1 is taken (`--series` overrides; the table is printed).
   1. N4 bias-field correction.
   2. rigid + affine + SyN registration onto raw/mni_t1w/tpl-MNI152NLin2009cAsym_res-01_T1w.nii.gz (antspyx,
-     the pipeline's [warp] extra). The metric is confined to the template's brain mask dilated by FIXED_MASK_MM,
+     the pipeline's [subject] extra). The metric is confined to the template's brain mask dilated by FIXED_MASK_MM,
      so the face, the neck and the scanner table never steer the fit. Affine alone leaves the gyri several
      millimetres off the parcels; the deformable stage is what makes the cortical labels sit on this person's
      sulci. Both stages' similarity to the template is measured and recorded.
@@ -29,8 +29,8 @@ Outputs
                                               registered and defaced (atlas-manifest picks every subject-*.json up)
   pipeline/work/subjects/<id>/                the ANTs transforms (forward and inverse) and the N4 image
   pipeline/raw/subject_<id>/SOURCE.json       the run record NOTICE points at for a `generated` source
-  pipeline/qa/subjects/<id>/*.png             before/after: sagittal midline, coronal MIP from the front, an
-                                              axial slab through the orbits -- look at these before releasing
+  pipeline/qa/subjects/<id>/*.png             before/after: sagittal midline, the skin surface seen from the
+                                              front, an axial slice through the orbits -- look before releasing
 
 The source id `subject_<id>` must exist in config/sources.yaml (group `subjects`, `generated: true`, a licence
 that may be redistributed) -- that is where the name, the consent statement and the licence live, and it is
@@ -65,12 +65,18 @@ DEFACE_MARGIN_MM = 6   # the shear plane stays at least this far outside the bra
 FACE_Y_MM, FACE_Z_MM = 20.0, 10.0   # "the face" for choosing the plane: head anterior to y and below z (MNI mm)
 MIN_ANTERIOR = 0.45    # the plane's outward normal must have at least this much anterior component (about 27 deg)
 HEAD_PERCENTILE = 40   # voxels above this percentile of the template's non-zero intensities count as head
-# Pearson correlation with the template inside the brain mask after SyN. A sharp individual against the blurred
-# average lands around 0.75-0.85 even when the fit is right (Colin27: affine 0.56 -> SyN 0.79, brain inside the
-# mask outline on every view), a wrong orientation or a failed affine around 0.2-0.4. So the gate is loose and
-# the renders in qa/subjects/<id>/ are the real check.
-MIN_SIMILARITY = 0.50  # below this the run fails
-WARN_SIMILARITY = 0.70 # below this it says so
+# Normalised mutual information with the template inside the brain mask after SyN, (H(a)+H(b))/H(a,b) over 48
+# bins: 1.0 means the two say nothing about each other, and it does not care whether the scan's contrast matches
+# the template's or is even inverted, which Pearson does (Pearson is still recorded, for information). Measured on
+# four open T1s and Colin27 the fit that is right by eye lands at 1.08-1.11; the same scan shifted 4 mm gives
+# 1.04, 8 mm 1.02, flipped front-to-back 1.01; a paediatric scan with flat contrast that visibly did not converge
+# gave 1.02, and a QA phantom 1.01. The gate sits in the gap; the renders in qa/subjects/<id>/ remain the check.
+MIN_SIMILARITY = 1.05  # below this the run fails
+WARN_SIMILARITY = 1.07 # below this it says so
+# The full antsRegistrationSyN.sh "s" recipe (rigid, affine, SyN with cross-correlation, proper multi-resolution
+# schedules), not antspyx's quick "SyN" shortcut: on a paediatric scan with flat grey/white contrast the shortcut
+# settled at NMI 1.018 (visibly off), the recipe at 1.082 -- at the price of 5-10 minutes instead of 40 s.
+DEFAULT_TRANSFORM = "antsRegistrationSyN[s]"
 
 
 def key_of(subject_id: str) -> str:
@@ -253,14 +259,25 @@ def register(t1: Path, subject_id: str, transform: str, reuse: bool) -> tuple[np
     return on_grid(warped), on_grid(affine_only), info
 
 
-def similarity(a: np.ndarray, b: np.ndarray, mask: np.ndarray) -> float:
-    """Pearson correlation inside the mask -- the one number that says whether the fit worked."""
-    x = a[mask].astype(np.float64); y = b[mask].astype(np.float64)
-    return float(np.corrcoef(x, y)[0, 1])
+def similarity(a: np.ndarray, b: np.ndarray, mask: np.ndarray, bins: int = 48) -> float:
+    """Normalised mutual information inside the mask (see MIN_SIMILARITY) -- the number that says whether the
+    fit worked, whatever the scan's contrast. Each image is scaled to its 0.5-99.5 percentile range first."""
+    def scaled(v: np.ndarray) -> np.ndarray:
+        lo, hi = np.percentile(v, [0.5, 99.5])
+        return np.clip((v - lo) / max(hi - lo, 1e-6), 0, 1)
+    h, _, _ = np.histogram2d(scaled(a[mask].astype(np.float64)), scaled(b[mask].astype(np.float64)), bins=bins, range=[[0, 1], [0, 1]])
+    p = h / h.sum()
+    ent = lambda q: float(-(q[q > 0] * np.log(q[q > 0])).sum())  # noqa: E731
+    return (ent(p.sum(1)) + ent(p.sum(0))) / ent(p)
+
+
+def pearson(a: np.ndarray, b: np.ndarray, mask: np.ndarray) -> float:
+    """Recorded alongside: it reads as 'how T1-like is this scan', not as 'did the fit work'."""
+    return float(np.corrcoef(a[mask].astype(np.float64), b[mask].astype(np.float64))[0, 1])
 
 
 # ---------------------------------------------------------------- QA renders
-def qa_renders(subject_id: str, before: np.ndarray, after: np.ndarray, template: np.ndarray) -> list[str]:
+def qa_renders(subject_id: str, before: np.ndarray, after: np.ndarray, template: np.ndarray, mask_ref: np.ndarray) -> list[str]:
     import matplotlib  # noqa: PLC0415
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt  # noqa: PLC0415
@@ -269,8 +286,16 @@ def qa_renders(subject_id: str, before: np.ndarray, after: np.ndarray, template:
     x0 = int(-GRID_AFFINE[0, 3]); z_orbit = int(-25 - GRID_AFFINE[2, 3])
 
     def skin_from_front(v: np.ndarray) -> np.ndarray:
-        """Depth of the first head voxel along -y for every (x, z), lit from the front: a face, if one is there."""
-        head = v > np.percentile(v[v > 0], HEAD_PERCENTILE) if (v > 0).any() else np.zeros_like(v, bool)
+        """Depth of the first head voxel along -y for every (x, z), lit from the front: a face, if one is there.
+        Air is not zero in a real scan, so the head is what is brighter than a tenth of the brain's median, in
+        one piece (the largest connected component) and with the speckle opened away."""
+        if not (v > 0).any():
+            return np.zeros((GRID_SHAPE[2], GRID_SHAPE[0]))
+        head = v > 0.1 * np.median(v[mask_ref])
+        head = ndimage.binary_opening(head, iterations=2)
+        lab, n = ndimage.label(head)
+        if n > 1:
+            head = lab == (np.bincount(lab.ravel())[1:].argmax() + 1)
         j = np.argmax(head[:, ::-1, :], axis=1)          # first anterior head voxel, index from the front
         depth = np.where(head.any(axis=1), GRID_SHAPE[1] - 1 - j, np.nan).astype(float)
         gx, gz = np.gradient(np.nan_to_num(depth, nan=np.nanmin(depth) if np.isfinite(depth).any() else 0))
@@ -302,7 +327,9 @@ def main(argv=None) -> None:
     ap.add_argument("scan", type=Path, help="the subject's T1-weighted scan: a NIfTI, a folder of DICOM files, or the .zip a hospital hands out")
     ap.add_argument("--id", required=True, help="short id: the volume becomes subject-<id>, its source subject_<id>")
     ap.add_argument("--series", help="DICOM only: the series number to use instead of the one that looks most like a 3D T1")
-    ap.add_argument("--transform", default="SyN", help="antspyx type_of_transform (SyN; Affine to see what the deformable stage adds)")
+    ap.add_argument("--transform", default=DEFAULT_TRANSFORM,
+                    help=f"antspyx type_of_transform. {DEFAULT_TRANSFORM} (default) is the full antsRegistrationSyN.sh recipe, 5-10 min; "
+                         "SyN is the quick one (40 s) and can miss on a scan with flat contrast; Affine shows what the deformable stage adds")
     ap.add_argument("--reuse", action="store_true", help="reuse the transforms already in work/subjects/<id>/")
     ap.add_argument("--no-deface", action="store_true", help="skip defacing (local use only: check-public refuses an undefaced subject volume)")
     a = ap.parse_args(argv)
@@ -329,12 +356,17 @@ def main(argv=None) -> None:
     t1w, origin = to_nifti(a.scan, work, a.series)
     warped, affine_only, info = register(t1w, sid, a.transform, a.reuse)
     info["input"] = {**origin, **info["input"], "given": str(a.scan)}
-    sim = {"affine": round(similarity(template, affine_only, mask), 4), a.transform.lower(): round(similarity(template, warped, mask), 4)}
+    sim = {"affine": round(similarity(template, affine_only, mask), 4), "deformable": round(similarity(template, warped, mask), 4)}
     info["similarity"] = sim
-    print(f"  correlation with the template inside the brain mask: affine {sim['affine']:.3f} -> {a.transform} {sim[a.transform.lower()]:.3f}")
-    if sim[a.transform.lower()] < MIN_SIMILARITY:
-        sys.exit(f"registration failed the {MIN_SIMILARITY} similarity gate -- look at work/subjects/{sid}/ and the input's orientation")
-    if sim[a.transform.lower()] < WARN_SIMILARITY:
+    info["pearson"] = {"affine": round(pearson(template, affine_only, mask), 4), "deformable": round(pearson(template, warped, mask), 4)}
+    print(f"  normalised mutual information with the template inside the brain mask: affine {sim['affine']:.3f} -> "
+          f"{a.transform} {sim["deformable"]:.3f}  (Pearson {info['pearson']['affine']:.2f} -> {info['pearson']["deformable"]:.2f})")
+    if sim["deformable"] < MIN_SIMILARITY:
+        # the renders are exactly what is needed to see what went wrong, so write them before giving up
+        renders = qa_renders(sid, affine_only, warped, template, mask)
+        sys.exit(f"registration failed the {MIN_SIMILARITY} similarity gate -- look at {', '.join(renders)} "
+                 "(left: after the affine, middle: after the deformable stage) and at the input's orientation")
+    if sim["deformable"] < WARN_SIMILARITY:
         print(f"  WARNING: similarity under {WARN_SIMILARITY}; check the renders before trusting the overlay")
 
     before = warped.copy()
@@ -351,7 +383,7 @@ def main(argv=None) -> None:
                              f"(dilated {DEFACE_MARGIN_MM} mm) that removes the most head; a*y + b*z + c > 0 is zeroed",
                    "plane_mm": {k: round(plane[k], 5) for k in ("a", "b", "c")}, "voxels_removed": removed}
         print(f"  defaced: {removed} voxels behind the plane {plane['a']:.3f}*y {plane['b']:+.3f}*z {plane['c']:+.1f} > 0")
-    renders = qa_renders(sid, before, warped if defaced else before, template)
+    renders = qa_renders(sid, before, warped if defaced else before, template, mask)
 
     lo, hi = robust_window(warped, mask)
     u8 = to_uint8(warped, 0.0, hi)

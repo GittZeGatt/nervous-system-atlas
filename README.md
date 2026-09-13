@@ -116,7 +116,7 @@ uv run --project pipeline atlas-subject path/to/patient-cd.zip --id me
 
 Give it what you have: the zip or folder a hospital hands out (DICOM — every series is converted with
 [dcm2niix](https://github.com/rordenlab/dcm2niix), the one that looks like a whole-head 3D T1 is taken, the
-table is printed, `--series N` overrides), or a NIfTI. It then does N4 bias correction, rigid + affine + **SyN** registration onto the atlas's own MNI T1w (affine alone
+table is printed, `--series N` overrides), or a NIfTI. It then does N4 bias correction, rigid + affine + **SyN** registration onto the atlas's own MNI T1w — the full `antsRegistrationSyN` recipe, five to ten minutes (affine alone
 leaves the gyri millimetres off the parcels; the deformable stage is what puts the cortical labels on *your*
 sulci), a resample onto the atlas grid, and **defacing** with a plane derived from the template's brain mask
 that cannot cut brain. Look at `pipeline/qa/subjects/me/` — especially `skin-front.png`, the skin surface seen

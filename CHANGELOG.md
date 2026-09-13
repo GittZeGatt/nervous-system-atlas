@@ -24,7 +24,13 @@ same tree, so a change to any one of the three can move the version.
   from the template brain mask (a convex-hull facet, so it cannot cut brain; chosen by face voxels, because
   scoring the whole head left the orbits in), windows it like the template and writes
   `volumes/subject-<id>.u8.bin` with a sidecar recording tool, transform, similarity before and after SyN and
-  the defacing. The manifest lists it under `kind: "subject"` with its own source and licence; the viewer's
+  the defacing. The fit is gated on normalised mutual information with the template (1.05; a good fit is
+  1.08–1.11), which unlike correlation does not depend on the scan's contrast; tested on four OpenNeuro T1s
+  from Siemens and Philips scanners and on dcm2niix's vendor DICOM sets, where the sets with no T1 in them
+  and a QA phantom are refused rather than shipped. The default transform is the full
+  `antsRegistrationSyN[s]` recipe (5–10 minutes): antspyx's quick `SyN` shortcut settled wrong on a
+  flat-contrast paediatric scan (NMI 1.018) that the recipe registers correctly (1.082).
+  The manifest lists it under `kind: "subject"` with its own source and licence; the viewer's
   contrast menu shows every subject scan after T1 and T2, `t` cycles through them, and `?c=subject-<id>`
   links work. `check-data`, `check-public` and `atlas-qa` refuse a subject volume that is undefaced,
   unattributed or under a restricted licence. QA renders in `pipeline/qa/subjects/<id>/` include the skin

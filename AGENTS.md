@@ -124,8 +124,12 @@ before a release. Run the whole list before anything is published.
   MNI-space shear plane, a facet of the template brain mask's convex hull, so it cannot touch brain. Score
   that facet on the whole head and the neck wins: the plane goes near-horizontal and the orbits stay in.
   Look at `pipeline/qa/subjects/<id>/skin-front.png` before releasing; `check-data`, `check-public` and
-  `atlas-qa` refuse an undefaced, unattributed or restricted subject volume. The similarity gate is loose
-  (0.5) on purpose — a sharp individual against the blurred average lands around 0.8 when the fit is right.
+  `atlas-qa` refuse an undefaced, unattributed or restricted subject volume. The fit is gated on normalised
+  mutual information, not correlation: a good fit is 1.08–1.11, a 4 mm shift 1.04, a scan that did not
+  converge 1.02 (gate 1.05), and NMI does not care what the scan's contrast looks like, which Pearson does.
+  A failed run still writes its renders so you can see why. The default transform is the full
+  `antsRegistrationSyN[s]` recipe (5–10 min), because antspyx's quick `SyN` (40 s) settled wrong on a
+  flat-contrast paediatric scan that the recipe registers fine.
 - **A `?c=` link and the first paint race.** Both load a contrast; `loadContrast` applies a texture only if
   it is still the chosen one, and one fetch per contrast is shared. Before that the slower T1 clobbered the
   linked contrast.

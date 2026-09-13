@@ -42,8 +42,8 @@ export class SliceControls {
     const t1 = h('option', { value: 't1w' }); const t2 = h('option', { value: 't2w' });
     const subjects = contrasts(app).filter((k) => k !== 't1w' && k !== 't2w').map((k) => {
       const v = app.manifest.volumes[k]!;
-      const reg = v.registration; const sim = reg?.similarity?.[reg.transform.toLowerCase()];
-      return h('option', { value: k, title: reg ? `${reg.tool}, ${reg.transform}${sim !== undefined ? `, r = ${sim.toFixed(2)} to the template` : ''}${v.defaced ? ', defaced' : ''}` : '' }, v.name ?? k);
+      const reg = v.registration; const sim = reg?.similarity?.deformable;
+      return h('option', { value: k, title: reg ? `${reg.tool}, ${reg.transform}${sim !== undefined ? `, NMI ${sim.toFixed(3)} to the template` : ''}${v.defaced ? ', defaced' : ''}` : '' }, v.name ?? k);
     });
     const contrast = h('select', { class: 'contrast', onchange: (e: Event) => setContrast(app, (e.target as HTMLSelectElement).value as Contrast) }, t1, t2, ...subjects);
     const opacity = h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: app.store.get().overlay.opacity,
