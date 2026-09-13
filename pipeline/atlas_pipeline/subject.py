@@ -1,12 +1,15 @@
 """Step 02b: an individual's T1w MRI, registered into the atlas space and defaced, as an extra slice contrast.
 
     uv run atlas-subject path/to/t1w.nii.gz --id me
+    uv run atlas-subject path/to/patient-cd.zip --id me      # or the DICOM folder itself
 
 The atlas is a template: every mesh, label volume and slice lives on the MNI152NLin2009cAsym 1 mm grid. A
 personal scan therefore does not change the atlas -- it is carried INTO that frame, where the meshes and the
 label overlays already line up, and becomes one more entry in the contrast menu next to T1 and T2.
 
 What happens to the scan:
+  0. DICOM (a folder, or the zip a hospital hands out) is converted with dcm2niix, every series, and the one
+     that looks most like a whole-head 3D T1 is taken (`--series` overrides; the table is printed).
   1. N4 bias-field correction.
   2. rigid + affine + SyN registration onto raw/mni_t1w/tpl-MNI152NLin2009cAsym_res-01_T1w.nii.gz (antspyx,
      the pipeline's [warp] extra). The metric is confined to the template's brain mask dilated by FIXED_MASK_MM,
@@ -40,6 +43,7 @@ import argparse
 import gzip
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -115,6 +119,80 @@ def face_mask(plane: dict) -> np.ndarray:
     z_mm = np.arange(GRID_SHAPE[2]) + GRID_AFFINE[2, 3]
     yz = (plane["a"] * y_mm[:, None] + plane["b"] * z_mm[None, :] + plane["c"]) > 0
     return np.broadcast_to(yz[None, :, :], GRID_SHAPE)
+
+
+# ---------------------------------------------------------------- DICOM -> NIfTI
+T1_WORDS = re.compile(r"t1|mprage|mp-rage|mp2rage|spgr|fspgr|bravo|tfl|3d", re.I)
+NOT_T1_WORDS = re.compile(r"t2|flair|dwi|dti|adc|trace|swi|tof|angio|pd|bold|fmri|asl|perf|localizer|localiser|scout|survey|"
+                          r"calib|smartbrain|aahead|mip|derived", re.I)
+
+
+def series_score(shape: tuple, zooms: tuple, desc: str, acq: str) -> tuple[int, str]:
+    """How much a converted series looks like the whole-head 3D T1 the registration wants; the reason is printed."""
+    why = []
+    if len(shape) != 3 or min(shape) < 48:
+        return -9, "not a 3D whole-head volume"
+    if max(zooms) > 2.5:
+        return -9, f"slices {max(zooms):.1f} mm apart"
+    s = 0
+    if T1_WORDS.search(desc): s += 2; why.append("named like a T1")
+    if NOT_T1_WORDS.search(desc): s -= 3; why.append("named like something else")
+    if max(zooms) / max(min(zooms), 1e-3) <= 1.6: s += 1; why.append("near-isotropic")
+    if acq.upper() == "3D": s += 1; why.append("3D acquisition")
+    return s, ", ".join(why) or "no clue in the name"
+
+
+def to_nifti(scan: Path, work: Path, series: str | None) -> tuple[Path, dict]:
+    """A NIfTI from whatever the person has: a NIfTI already, a folder of DICOM files, or the .zip a hospital
+    hands out. DICOM goes through dcm2niix (BSD-2-Clause, the `subject` extra); every series is converted into
+    work/subjects/<id>/nifti/ and the one that looks most like a whole-head 3D T1 is taken -- `--series` picks
+    by series number instead. Nothing here ships: the converted files stay in work/."""
+    if scan.suffix == ".nii" or scan.name.endswith(".nii.gz"):
+        return scan, {"format": "nifti"}
+    src = scan
+    if scan.suffix.lower() == ".zip":
+        src = work / "dicom"
+        shutil.rmtree(src, ignore_errors=True)
+        shutil.unpack_archive(str(scan), str(src))
+    if not src.is_dir():
+        sys.exit(f"{scan}: expected a NIfTI (.nii/.nii.gz), a folder of DICOM files, or a .zip of one")
+    try:
+        import dcm2niix  # noqa: PLC0415
+    except ImportError:
+        sys.exit("reading DICOM needs dcm2niix: `uv sync --extra subject`")
+    out = work / "nifti"
+    shutil.rmtree(out, ignore_errors=True)
+    out.mkdir(parents=True)
+    # -ba y: no names or dates in the sidecars; -z y: gzip; %s_%d: series number then description
+    r = subprocess.run([str(dcm2niix.bin_path), "-z", "y", "-b", "y", "-ba", "y", "-f", "%s_%d", "-o", str(out), str(src)],
+                       capture_output=True, text=True)
+    (work / "dcm2niix.log").write_text(r.stdout + r.stderr)
+    rows = []
+    for nii in sorted(out.glob("*.nii.gz")):
+        side = nii.with_name(nii.name[:-7] + ".json")
+        meta = json.loads(side.read_text()) if side.exists() else {}
+        img = nib.load(str(nii))
+        shape = tuple(int(v) for v in img.shape); zooms = tuple(float(v) for v in img.header.get_zooms()[:len(shape)])
+        desc = str(meta.get("SeriesDescription") or meta.get("ProtocolName") or nii.name)
+        num = str(meta.get("SeriesNumber", nii.name.split("_")[0]))
+        score, why = series_score(shape, zooms, desc, str(meta.get("MRAcquisitionType", "")))
+        rows.append({"file": nii, "series": num, "description": desc, "shape": shape, "zooms": zooms, "score": score, "why": why})
+    if not rows:
+        sys.exit(f"dcm2niix found no image series in {src} (see {work / 'dcm2niix.log'})")
+    if series is not None:
+        pick = next((x for x in rows if x["series"] == str(series)), None)
+        if pick is None:
+            sys.exit(f"--series {series}: no such series; available: {', '.join(x['series'] for x in rows)}")
+    else:
+        pick = max(rows, key=lambda x: (x["score"], int(np.prod(x["shape"]))))
+    print(f"  {len(rows)} series converted with dcm2niix {r.stdout.split('version')[1].split()[0] if 'version' in r.stdout else ''}:")
+    for x in rows:
+        mark = "->" if x is pick else "  "
+        print(f"   {mark} series {x['series']:>4}  {x['description'][:40]:<40} {'x'.join(map(str, x['shape'])):>14}  "
+              f"{'x'.join(f'{z:.2g}' for z in x['zooms']):>14} mm  {x['why']}")
+    if series is None and pick["score"] < 1:
+        sys.exit("none of these looks like a whole-head 3D T1; pick one with --series <number>")
+    return pick["file"], {"format": "dicom", "series": pick["series"], "description": pick["description"], "seriesFound": len(rows)}
 
 
 # ---------------------------------------------------------------- registration
@@ -221,14 +299,15 @@ def qa_renders(subject_id: str, before: np.ndarray, after: np.ndarray, template:
 # ---------------------------------------------------------------- main
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("t1w", type=Path, help="the subject's T1-weighted NIfTI (DICOM: convert with dcm2niix first)")
+    ap.add_argument("scan", type=Path, help="the subject's T1-weighted scan: a NIfTI, a folder of DICOM files, or the .zip a hospital hands out")
     ap.add_argument("--id", required=True, help="short id: the volume becomes subject-<id>, its source subject_<id>")
+    ap.add_argument("--series", help="DICOM only: the series number to use instead of the one that looks most like a 3D T1")
     ap.add_argument("--transform", default="SyN", help="antspyx type_of_transform (SyN; Affine to see what the deformable stage adds)")
     ap.add_argument("--reuse", action="store_true", help="reuse the transforms already in work/subjects/<id>/")
     ap.add_argument("--no-deface", action="store_true", help="skip defacing (local use only: check-public refuses an undefaced subject volume)")
     a = ap.parse_args(argv)
-    if not a.t1w.exists():
-        sys.exit(f"{a.t1w}: no such file")
+    if not a.scan.exists():
+        sys.exit(f"{a.scan}: no such file or folder")
     if not T1.exists() or not MASK.exists():
         sys.exit("the MNI template is missing: run atlas-download first")
     sid = a.id
@@ -245,7 +324,11 @@ def main(argv=None) -> None:
 
     template = np.asanyarray(load_ras(T1).dataobj).astype(np.float32)
     mask = np.asanyarray(load_ras(MASK).dataobj) > 0
-    warped, affine_only, info = register(a.t1w, sid, a.transform, a.reuse)
+    work = WORK / "subjects" / sid
+    work.mkdir(parents=True, exist_ok=True)
+    t1w, origin = to_nifti(a.scan, work, a.series)
+    warped, affine_only, info = register(t1w, sid, a.transform, a.reuse)
+    info["input"] = {**origin, **info["input"], "given": str(a.scan)}
     sim = {"affine": round(similarity(template, affine_only, mask), 4), a.transform.lower(): round(similarity(template, warped, mask), 4)}
     info["similarity"] = sim
     print(f"  correlation with the template inside the brain mask: affine {sim['affine']:.3f} -> {a.transform} {sim[a.transform.lower()]:.3f}")

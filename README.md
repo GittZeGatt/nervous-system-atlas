@@ -110,11 +110,13 @@ grid. A personal scan is therefore not something the atlas adapts *to*; it is ca
 structures already line up, and appears in the contrast menu next to T1 and T2:
 
 ```bash
-cd pipeline && uv sync --extra warp && cd ..                        # antspyx, for the registration
-uv run --project pipeline atlas-subject path/to/t1w.nii.gz --id me  # DICOM: run dcm2niix first
+cd pipeline && uv sync --extra subject && cd ..                     # antspyx for the registration, dcm2niix for DICOM
+uv run --project pipeline atlas-subject path/to/patient-cd.zip --id me
 ```
 
-That does N4 bias correction, rigid + affine + **SyN** registration onto the atlas's own MNI T1w (affine alone
+Give it what you have: the zip or folder a hospital hands out (DICOM — every series is converted with
+[dcm2niix](https://github.com/rordenlab/dcm2niix), the one that looks like a whole-head 3D T1 is taken, the
+table is printed, `--series N` overrides), or a NIfTI. It then does N4 bias correction, rigid + affine + **SyN** registration onto the atlas's own MNI T1w (affine alone
 leaves the gyri millimetres off the parcels; the deformable stage is what puts the cortical labels on *your*
 sulci), a resample onto the atlas grid, and **defacing** with a plane derived from the template's brain mask
 that cannot cut brain. Look at `pipeline/qa/subjects/me/` — especially `skin-front.png`, the skin surface seen

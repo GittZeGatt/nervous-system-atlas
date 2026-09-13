@@ -16,7 +16,9 @@ same tree, so a change to any one of the three can move the version.
 
 ### Added
 
-- **An individual's MRI as a slice contrast.** `atlas-subject scan.nii.gz --id <id>` carries a personal T1w
+- **An individual's MRI as a slice contrast.** `atlas-subject <scan> --id <id>` takes a NIfTI, a folder of
+  DICOM files or the zip a hospital hands out (dcm2niix converts every series and the one that looks like a
+  whole-head 3D T1 is taken; `--series` overrides) and carries the T1w
   into the atlas space — N4, rigid + affine + SyN onto the atlas's MNI T1w with the metric confined to the
   brain mask, a resample onto the 193×229×193 grid — defaces it with a fixed MNI-space shear plane derived
   from the template brain mask (a convex-hull facet, so it cannot cut brain; chosen by face voxels, because

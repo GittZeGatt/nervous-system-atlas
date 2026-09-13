@@ -21,6 +21,8 @@ dependencies = [
 [project.optional-dependencies]
 icp = ["open3d==0.19.0"]
 warp = ["antspyx==0.6.3"]
+# atlas-subject: the registration plus DICOM -> NIfTI (dcm2niix, BSD-2-Clause, prebuilt wheels on every platform)
+subject = ["antspyx==0.6.3", "dcm2niix>=1.0.20260724"]
 
 [project.scripts]
 atlas-download = "atlas_pipeline.cli:download"

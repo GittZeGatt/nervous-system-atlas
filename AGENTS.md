@@ -154,7 +154,8 @@ so in the licence name rather than guessing.
 
 An individual's MRI is a data source too. Add `subject_<id>` (group `subjects`, `generated: true`, a
 redistributable licence, a citation that says whose scan it is and that they agreed to publish it), then
-`uv run --project pipeline atlas-subject scan.nii.gz --id <id>` (needs `uv sync --extra warp`), look at
+`uv run --project pipeline atlas-subject <zip, DICOM folder or NIfTI> --id <id>` (needs `uv sync --extra
+subject`: antspyx and dcm2niix; the T1 series is picked by name, shape and voxel size, `--series` overrides), look at
 `pipeline/qa/subjects/<id>/`, and run `atlas-manifest`, `npm run notice`, `npm run build` as above. The scan
 itself never enters the repository: `raw/` and `public/data/` are ignored and `check-tree` refuses `.nii`.
 
