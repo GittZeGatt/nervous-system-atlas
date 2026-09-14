@@ -48,7 +48,7 @@ slices to it.
 | Glossary | 205 | |
 | Quiz | 60 | original vignettes; the answer spotlights the structures in 3D |
 | Meshes | 585 public / 655 private | MNI atlases remeshed from label masks, the VENAT venous atlas, BodyParts3D and Z-Anatomy geometry registered by landmarks, and meshes constructed here from geometry no atlas provides (12 in both editions, 40 in the public one); 36 MB at full detail, about 3.5 MB on first paint |
-| Citations | 2387 | to 657 open-access sources, across all 825 entries |
+| Citations | 2384 | to 657 open-access sources, across all 824 entries |
 
 ## Features
 
@@ -60,6 +60,8 @@ slices to it.
 - **Your own MRI.** A personal T1 scan can be registered into the atlas space and shown on the slices next to the template's T1/T2, with every mesh and label already lined up on it — see [Adding your own MRI](#adding-your-own-mri). Defaced before it ships, always.
 - **Two languages.** English and Turkish, switched with the **TR / EN** button or `L`, kept in the URL so a link opens in the language it was copied in.
 - **Everything addressable.** `#/structure/<id>`, `#/pathway/<id>`, `#/syndrome/<id>?step=n&side=l`, `#/topic/<id>`, `#/glossary`, `#/quiz`, `#/about`. Press `?` for the shortcuts.
+- **Share view.** The toolbar's **Share view** copies a link that reproduces the scene exactly — camera, visible structures, slices, peels, contrast, open panel — where a plain link carries only the route and the slice positions.
+- **Quiz that remembers.** Answers stay in your browser across reloads; filter the vignettes by type or difficulty, or review only the ones you missed.
 
 ## Quick start
 
@@ -144,7 +146,7 @@ The substitutions are worth reading about — none of them is a like-for-like co
 
 ## Content and citations
 
-**Every non-glossary entry cites open-access sources only**: StatPearls chapters on the NCBI Bookshelf, articles in PubMed Central, openly licensed reference pages. No printed textbook is cited anywhere in the shipped atlas, and no paywalled article. Today that is **2387 citations over 657 sources**, and a citation names the section it came from, read from the live chapter.
+**Every non-glossary entry cites open-access sources only**: StatPearls chapters on the NCBI Bookshelf, articles in PubMed Central, openly licensed reference pages. No printed textbook is cited anywhere in the shipped atlas, and no paywalled article. Today that is **2384 citations over 657 sources**, and a citation names the section it came from, read from the live chapter.
 
 `verified: true` on a bibliography entry is only ever written by a tool from live source metadata, never by hand. The build fails on an unknown reference, and `npm run citations:check` fails on a malformed citation, an unverified entry or an entry nothing cites. See [Content and citations](docs/content.md) for the schemas, the authoring tools and the rules.
 
@@ -152,7 +154,7 @@ The substitutions are worth reading about — none of them is a like-for-like co
 
 The interface exists in English and Turkish (`src/i18n/en.ts` and `src/i18n/tr.ts`, 293 strings, the Turkish table typed against the English one so a missing key fails the typecheck). In Turkish mode structures, cranial nerves and pathways are named the way Turkish medical teaching names them — by their Latin term, from FIPAT's *Terminologia Neuroanatomica* and *Terminologia Anatomica 2* — with the English name as a secondary line.
 
-All 825 entries' clinical prose is translated too, as overlays under `content/i18n/tr/` that pin a hash of the English text they were made from, so an English edit shows up as stale rather than as silently wrong Turkish.
+All 824 entries' clinical prose is translated too, as overlays under `content/i18n/tr/` that pin a hash of the English text they were made from, so an English edit shows up as stale rather than as silently wrong Turkish.
 
 ![The atlas in Turkish: the structure tree and panel naming structures by their Latin terms with the English name beneath, the interface in Turkish, and the machine-assisted translation notice along the foot of the 3D view](docs/screenshots/turkish.webp)
 
@@ -165,18 +167,18 @@ All 825 entries' clinical prose is translated too, as overlays under `content/i1
 ```bash
 npm run check-tree                                # nothing private, restricted or generated is committed
 npm run typecheck
-npm test                                          # 48 unit tests
+npm test                                          # 54 unit tests
 npm run content:validate                          # schemas, cross-links, word minimums, spelling, coverage
-npm run citations:check
+npm run citations:check                           # also the counts README and docs quote (--fix rewrites them)
 node scripts/check-data.ts --all                  # both manifests: meshes, volumes, coordinates
 npm run notice -- --check                         # NOTICE is generated; never edit it by hand
 uv run --project pipeline atlas-qa                # the pipeline's own data gates
-npx playwright install chromium && npm run e2e    # 19 browser tests (4 of them need no data)
+npx playwright install chromium && npm run e2e    # 31 browser tests (4 of them need no data)
 npm run build                                     # the public build, ending in the redistribution gate
 python3 tools/i18n/prose.py check                 # the Turkish overlays against the English entries
 ```
 
-`.github/workflows/checks.yml` runs everything in that list that works without generated data. The rest is a local job before a release. [CONTRIBUTING.md](CONTRIBUTING.md) explains the workflow, and [CHANGELOG.md](CHANGELOG.md) what has changed.
+`.github/workflows/checks.yml` runs everything in that list that works without generated data, and a second job fetches the last released bundle with `npm run data` and runs the browser tests against it. The rest is a local job before a release. [CONTRIBUTING.md](CONTRIBUTING.md) explains the workflow, and [CHANGELOG.md](CHANGELOG.md) what has changed.
 
 ## Licences and attribution
 
@@ -266,7 +268,7 @@ Her kesit, meshlerin kayıtlandığı MR'ın kendisidir; böylece bir yapı hem 
 | Sözlük | 205 | |
 | Vaka soruları | 60 | özgün vakalar; yanıt, ilgili yapıları üç boyutta öne çıkarır |
 | Mesh | 585 açık / 655 özel | etiket maskelerinden yeniden meshlenen MNI atlasları, VENAT venöz atlası, işaret noktalarıyla kayıtlanan BodyParts3D ve Z-Anatomy geometrisi ve hiçbir atlasın vermediği, burada kurulan meshler (iki sürümde de 12, açık sürümde 40); tam ayrıntıda 36 MB, ilk boyamada yaklaşık 3,5 MB |
-| Atıflar | 2387 | 825 kaydın tamamında, 657 açık erişimli kaynağa |
+| Atıflar | 2384 | 824 kaydın tamamında, 657 açık erişimli kaynağa |
 
 ## Özellikler
 
@@ -277,6 +279,8 @@ Her kesit, meshlerin kayıtlandığı MR'ın kendisidir; böylece bir yapı hem 
 - **Lezyon kipi.** `#/syndrome/<id>` sahneyi karartır, tutulan yapıları öne çıkarır, lezyon işaretini yerleştirir ve defisitleri sırayla gezer; **Yansıt** lezyonu diğer tarafa taşır.
 - **İki dil.** Araç çubuğundaki **TR / EN** düğmesi ya da `L` ile İngilizce ve Türkçe. Seçim adres çubuğunda tutulur, böylece bir bağlantı kopyalandığı dilde açılır.
 - **Her şeyin adresi var.** `#/structure/<id>`, `#/pathway/<id>`, `#/syndrome/<id>?step=n&side=l`, `#/topic/<id>`, `#/glossary`, `#/quiz`, `#/about`. Kısayollar için `?` tuşuna basın.
+- **Görünümü paylaş.** Araç çubuğundaki **Görünümü paylaş**, sahneyi aynen kuran bir bağlantı kopyalar: kamera, görünen yapılar, kesitler, soyma, kontrast, açık panel. Sıradan bir bağlantı yalnızca rotayı ve kesit konumlarını taşır.
+- **Hatırlayan vaka soruları.** Yanıtlar tarayıcınızda kalır, yenilemede kaybolmaz; soruları türe ya da zorluğa göre süzün ya da yalnızca yanlışlarınızı gözden geçirin.
 
 ## Hızlı başlangıç
 
@@ -340,7 +344,7 @@ Karşılıkların hiçbiri birebir kopya değildir; her birinin gerekçesi [İki
 
 ## İçerik ve kaynaklar
 
-**Sözlük dışındaki her kayıt yalnızca açık erişimli kaynaklara atıf verir**: NCBI Bookshelf üzerindeki StatPearls bölümleri, PubMed Central'daki makaleler, açık lisanslı başvuru sayfaları. Yayımlanan atlasın hiçbir yerinde basılı ders kitabına ya da ödeme duvarı ardındaki bir makaleye atıf yoktur. Bugün bu, **657 kaynak üzerinden 2387 atıf** demektir ve her atıf, canlı bölümden okunarak geldiği bölümü adlandırır.
+**Sözlük dışındaki her kayıt yalnızca açık erişimli kaynaklara atıf verir**: NCBI Bookshelf üzerindeki StatPearls bölümleri, PubMed Central'daki makaleler, açık lisanslı başvuru sayfaları. Yayımlanan atlasın hiçbir yerinde basılı ders kitabına ya da ödeme duvarı ardındaki bir makaleye atıf yoktur. Bugün bu, **657 kaynak üzerinden 2384 atıf** demektir ve her atıf, canlı bölümden okunarak geldiği bölümü adlandırır.
 
 Bir kaynakça kaydındaki `verified: true` yalnızca bir araç tarafından, canlı kaynak üstverisinden yazılır; elle asla. Bilinmeyen bir kaynağa atıf derlemeyi durdurur; `npm run citations:check` ise bozuk bir atıfta, doğrulanmamış bir kayıtta ya da hiçbir yerden atıf almayan bir kayıtta hata verir. Şemalar, yazım araçları ve kurallar için [İçerik ve kaynaklar](docs/content.md).
 
@@ -348,7 +352,7 @@ Bir kaynakça kaydındaki `verified: true` yalnızca bir araç tarafından, canl
 
 Arayüz İngilizce ve Türkçedir (`src/i18n/en.ts` ve `src/i18n/tr.ts`, 293 dizge; Türkçe tablo İngilizcesine göre tiplenmiştir, bu yüzden eksik bir anahtar tip denetimini düşürür). Türkçe kipte yapılar, kranial sinirler ve yolaklar Türk tıp eğitiminin adlandırdığı gibi, FIPAT'ın *Terminologia Neuroanatomica* ve *Terminologia Anatomica 2* listelerinden gelen Latince terimleriyle adlandırılır; İngilizce ad ikinci satırda kalır.
 
-825 kaydın klinik metinlerinin tamamı da çevrilmiştir. Çeviriler `content/i18n/tr/` altında, üretildikleri İngilizce metnin özetine (hash) sabitlenmiş kaplamalar olarak durur; böylece İngilizce metin değiştiğinde çeviri sessizce yanlış kalmak yerine "eskimiş" olarak işaretlenir.
+824 kaydın klinik metinlerinin tamamı da çevrilmiştir. Çeviriler `content/i18n/tr/` altında, üretildikleri İngilizce metnin özetine (hash) sabitlenmiş kaplamalar olarak durur; böylece İngilizce metin değiştiğinde çeviri sessizce yanlış kalmak yerine "eskimiş" olarak işaretlenir.
 
 ![Atlas Türkçe kipte: yapı ağacı ve panel, yapıları Latince adlarıyla, altında İngilizce adıyla gösteriyor; arayüz Türkçe ve üç boyutlu pencerenin altında makine destekli çeviri uyarısı](docs/screenshots/turkish.webp)
 
@@ -361,18 +365,18 @@ Terminoloji tablosunu, kaplama biçimini ve araçları [Türkçe sürüm](docs/t
 ```bash
 npm run check-tree                                # özel, kısıtlı ya da üretilmiş hiçbir dosya depoda değil
 npm run typecheck
-npm test                                          # 47 birim testi
+npm test                                          # 54 birim testi
 npm run content:validate                          # şemalar, çapraz bağlantılar, sözcük alt sınırları, yazım, kapsam
 npm run citations:check
 node scripts/check-data.ts --all                  # iki manifest: meshler, hacimler, koordinatlar
 npm run notice -- --check                         # NOTICE üretilir; elle düzenlenmez
 uv run --project pipeline atlas-qa                # işlem hattının kendi veri kapıları
-npx playwright install chromium && npm run e2e    # 19 tarayıcı testi (4'ü veri gerektirmez)
+npx playwright install chromium && npm run e2e    # 31 tarayıcı testi (4'ü veri gerektirmez)
 npm run build                                     # açık derleme, sonunda yeniden dağıtım denetimi
 python3 tools/i18n/prose.py check                 # Türkçe kaplamaların İngilizce kayıtlarla karşılaştırılması
 ```
 
-`.github/workflows/checks.yml` bu listeden üretilmiş veri gerektirmeyen her şeyi çalıştırır. Kalanı, sürüm öncesi yerelde yapılır. Çalışma düzenini [CONTRIBUTING.md](CONTRIBUTING.md), neyin değiştiğini [CHANGELOG.md](CHANGELOG.md) anlatır.
+`.github/workflows/checks.yml` bu listeden üretilmiş veri gerektirmeyen her şeyi çalıştırır; ikinci bir iş, son yayımlanan veriyi `npm run data` ile indirip tarayıcı testlerini onun üzerinde koşturur. Kalanı, sürüm öncesi yerelde yapılır. Çalışma düzenini [CONTRIBUTING.md](CONTRIBUTING.md), neyin değiştiğini [CHANGELOG.md](CHANGELOG.md) anlatır.
 
 ## Lisanslar ve atıf
 

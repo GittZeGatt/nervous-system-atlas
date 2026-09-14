@@ -71,13 +71,13 @@ only where restricted data was built. So a plain `npm run dev` or `npm run build
 ```bash
 npm run check-tree                                # nothing private, restricted or generated is committed
 npm run typecheck
-npm test                                          # 48 unit tests
+npm test                                          # 54 unit tests
 npm run content:validate                          # schemas, cross-links, word minimums, spelling, coverage
 npm run citations:check
 node scripts/check-data.ts --all                  # both manifests: meshes, volumes, coordinates
 npm run notice -- --check
 uv run --project pipeline atlas-qa                # the pipeline's own data gates
-npx playwright install chromium && npm run e2e    # 25 browser tests
+npx playwright install chromium && npm run e2e    # 31 browser tests
 npm run build                                     # ends in the redistribution gate
 python3 tools/i18n/prose.py check                 # Turkish overlays against the English entries
 ```
@@ -136,7 +136,25 @@ before a release. Run the whole list before anything is published.
 - **One e2e test is timing-sensitive.** `interaction budget` measures frame pacing and can fail on a loaded
   machine. Re-run it alone before believing it.
 - **`npm run e2e` needs a dev server with data**, except `e2e/no-data.spec.ts`, which fakes the missing
-  manifest and is the one browser test CI can run.
+  manifest. CI's `integration` job fetches the *last released* bundle with `npm run data` and runs the whole
+  suite on it, so a browser test that depends on data not yet released passes locally and fails there.
+- **A teaching mode shows meshes through `showForMode`, never `setStructureVisible`.** The lease touches only
+  meshes that are not visible at the time and puts each back to the override it had (shown, hidden or
+  neither). The old pattern — "not in shownStructures, so I showed it, so I hide it on exit" — hid anatomy
+  that was on screen through its system's defaults. Syndrome, pathway, topic and quiz all use the lease.
+- **A store `set` inside a subscriber re-runs the pass.** Subscribers visited before the nested set get
+  another look, and each only fires when its selection moved, so the order of subscription does not matter.
+  Two subscribers that keep changing state in response to each other stop after 50 passes with an error.
+- **The pathway is a panel.** `panel: { kind: 'pathway', id }` is what keeps `#/pathway/<id>` in the URL
+  while the reader moves slices or selects a waypoint; the selectedId subscription that closes the other
+  panels on a selection leaves this one alone. `routeOf(state)` in `hashRouter.ts` is the one place the
+  state-to-URL mapping lives; `viewParams` is the long form the Share button writes (camera, systems,
+  overrides, slices, peels), applied after the route so a preset or a fit cannot override it.
+- **`location.hash = x` changes the URL now and delivers `hashchange` later.** A debounced state-to-URL
+  rewrite that fires in between puts the old route back and the handler then reads that, so the router only
+  lands a rewrite on the hash it was scheduled from. This bit an e2e test before it bit a reader.
+- **`citations:check` also checks the counts the README and docs quote.** A content change that adds or
+  removes a citation or an entry fails it until you run `node scripts/content/check-citations.ts --fix`.
 
 ## Adding or changing a data source
 

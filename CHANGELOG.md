@@ -35,8 +35,42 @@ same tree, so a change to any one of the three can move the version.
   links work. `check-data`, `check-public` and `atlas-qa` refuse a subject volume that is undefaced,
   unattributed or under a restricted licence. QA renders in `pipeline/qa/subjects/<id>/` include the skin
   surface seen from the front.
+- **Share view.** A toolbar button writes the exact scene into the address bar and the clipboard: camera
+  position and target, the visible systems and per-mesh overrides, which slices are on, the peels, the pin,
+  the contrast, the open panel and the syndrome side. A plain link still carries only the route, the slice
+  positions and a non-default contrast or language, so ordinary URLs stay short; the long form is only
+  written when asked for.
+- **Quiz continuity.** Answers are kept in the browser (by vignette id) and survive a reload; the set can be
+  narrowed to one type or difficulty or to the vignettes answered wrong; Restart clears everything.
+- **A CI job on real data.** `checks.yml` gained an `integration` job that fetches the pinned public bundle
+  with `npm run data` and runs the whole browser suite against it on pushes and on demand — teaching-mode
+  exit, Mirror, a slower selection, links that survive slice moves and reloads, the share link.
+- **The counts the docs quote are checked.** `citations:check` compares the citation, source and entry counts
+  in README.md and docs/content.md with the live ones and fails on drift; `--fix` rewrites them. (They had
+  drifted: 2384 citations across 824 entries, not 2387 across 825.)
+- **Keyboard access.** The search box is a combobox over a listbox (arrow keys move `aria-activedescendant`,
+  Enter takes the result) and a pathway's steps are buttons, reachable with Tab.
 
 ### Fixed
+
+- **Mirror left the lesion marker, the slices and the shown meshes on the original side.** Only the involved
+  set changed; the layout ran only when the syndrome id changed. A side change is now a re-layout too (the
+  authored camera preset is the one thing not re-applied, so the reader's angle survives).
+- **Leaving a syndrome, a pathway, a topic or a quiz reveal could hide anatomy that was on screen before.**
+  Each mode recorded a mesh as "shown by me" whenever it was not in the shown-overrides set, which includes
+  meshes visible through their system's defaults, and then hid them on exit. All four now go through one
+  `showForMode` lease that touches only meshes not visible at the time and restores each one's previous
+  override exactly.
+- **A slower earlier selection could move the slices and the camera to a structure no longer selected.**
+  The load callback now checks that its structure is still the selection.
+- **A state change made from inside a subscriber could be missed** by the subscribers already visited in
+  that pass, so behaviour depended on subscription order. The store now repeats the pass until no subscriber
+  changes state (with a guard against two of them ping-ponging forever).
+- **A pathway lost its link.** The state-to-URL sync knew nothing about pathways, so moving a slice while
+  reading one rewrote the hash to `#/slice?…` and a reload lost the pathway. The open pathway is now part of
+  the panel state, selecting a waypoint keeps it open, and a navigation cancels any URL rewrite still queued
+  from the state before it.
+- An instant camera move now cancels a running tween instead of being overwritten by its next frame.
 
 - A `?c=` link no longer loses to the first paint: two contrast loads were in flight and the slower one
   (usually T1) replaced the linked one. A texture is now applied only if it is still the chosen contrast, and
