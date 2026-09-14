@@ -3,7 +3,7 @@ import { h, clear, enTag, secondaryName } from './dom.ts';
 import { entryName, t, type NamedEntry, entryOf } from '../i18n/index.ts';
 import { citeNode } from './cite.ts';
 import type { Citation } from '../types/content.ts';
-import { selectStructure, setStructureVisible } from '../state/actions.ts';
+import { selectStructure, showForMode } from '../state/actions.ts';
 import { applyVisualState } from '../scene/materials.ts';
 import { sourceLine } from './sourceLine.ts';
 
@@ -46,19 +46,21 @@ export class PathwayPanel {
     const html = (p['html'] ?? {}) as Record<string, string>;
     const wps = p['waypoints'] as Rec[];
     // highlight waypoint meshes
-    const shown: string[] = [];
     const meshIds = new Set<string>([...((p['meshIds'] as string[]) ?? []), ...wps.map((w) => this.meshForStructure(String(w['structureId']), w['meshId'] as string | undefined)).filter((x): x is string => !!x)]);
-    for (const mid of meshIds) { if (!this.app.store.get().shownStructures.has(mid)) { setStructureVisible(this.app, mid, true); shown.push(mid); } }
+    const restoreShown = showForMode(this.app, meshIds);
     void this.app.registry.ensure(meshIds).then((meshes) => { for (const m of meshes) applyVisualState(m, 'involved'); this.app.sm.requestRender(); });
-    this.cleanup = () => { for (const mid of shown) setStructureVisible(this.app, mid, false); for (const mid of meshIds) { const m = this.app.registry.get(mid); if (m) applyVisualState(m, 'normal'); } this.app.sm.requestRender(); };
+    this.cleanup = () => { restoreShown(); for (const mid of meshIds) { const m = this.app.registry.get(mid); if (m) applyVisualState(m, 'normal'); } this.app.sm.requestRender(); };
 
     const stepList = h('ol', { class: 'waypoints' }, ...wps.map((w, i) => {
       const sid = String(w['structureId']); const st = entryOf(this.app, 'structures', sid);
       const mid = this.meshForStructure(sid, w['meshId'] as string | undefined);
       const side = String(w['sideRelativeToOrigin']);
       const n = entryName(st, sid);
-      return h('li', { class: `wp side-${side}`, onclick: () => { if (mid) selectStructure(this.app, mid, { moveSlices: true }); } },
-        h('span', { class: 'wp-n' }, String(i + 1)), h('b', {}, n.primary, secondaryName(n)), h('span', { class: 'tag' }, side), w['note'] ? h('div', { class: 'muted small' }, String(w['note'])) : null);
+      // a real button, so the step can be reached with Tab and taken with Enter or Space
+      return h('li', { class: `wp side-${side}` },
+        h('button', { type: 'button', class: 'wp-pick', disabled: mid ? null : 'true', onclick: () => { if (mid) selectStructure(this.app, mid, { moveSlices: true }); } },
+          h('span', { class: 'wp-n' }, String(i + 1)), h('b', {}, n.primary, secondaryName(n)), h('span', { class: 'tag' }, side)),
+        w['note'] ? h('div', { class: 'muted small' }, String(w['note'])) : null);
     }));
     const dec = p['decussation'] as Rec | null;
     const title = entryName(p as unknown as NamedEntry, String(p['name'] ?? id));

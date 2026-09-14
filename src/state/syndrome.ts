@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { App } from '../app.ts';
-import { applyStates, applyCameraPreset, setSlices, setStructureVisible } from './actions.ts';
+import { applyStates, applyCameraPreset, setSlices, showForMode } from './actions.ts';
 import type { PresetName } from '../types/state.ts';
 
 type Rec = Record<string, unknown>;
@@ -85,22 +85,31 @@ export function stepMeshes(app: App, res: ResolvedSyndrome, step: number): Set<s
   return new Set(meshesFor(app, sub, side));
 }
 
-let shownForSyndrome: string[] = [];
+/** the syndrome and side the scene was last laid out for, so Mirror (same id, other side) is a re-layout too */
+let placed: { id: string; side: LesionSide | 'both' } | null = null;
+let restoreShown: (() => void) | null = null;
 
 export function enterSyndrome(app: App, id: string, step = 0, override?: LesionSide): void {
-  const cur = app.store.get().syndrome;
   const res = resolveSyndrome(app, id, override);
   if (!res) return;
-  const first = !cur || cur.id !== id;
+  const first = !placed || placed.id !== id;
+  // A side change moves everything that depends on the side: which meshes are shown, where the lesion
+  // marker sits, where the slices and the camera go. Only the authored camera preset is not re-applied,
+  // so mirroring does not throw away the angle the reader has chosen.
+  const relayout = first || placed!.side !== res.side;
   if (first) {
     exitSyndrome(app, false);
-    for (const m of res.involved) if (!app.store.get().shownStructures.has(m)) { setStructureVisible(app, m, true); shownForSyndrome.push(m); }
     const preset = res.syn['cameraPreset'] as PresetName | undefined;
     if (preset) applyCameraPreset(app, preset);
+  }
+  if (relayout) {
+    restoreShown?.();
+    restoreShown = showForMode(app, res.involved);
     if (res.focus) setSlices(app, { sagittal: Math.round(res.focus[0]), coronal: Math.round(res.focus[1]), axial: Math.round(res.focus[2]) });
     if (res.lesion) { app.lesion.position.set(...res.lesion.mni); app.lesion.scale.setScalar(res.lesion.radius); app.lesion.visible = true; } else app.lesion.visible = false;
     void app.registry.ensure(res.involved).then(() => applyStates(app));
     if (res.focus) { const c = new THREE.Vector3(...res.focus); app.sm.fitToBox(new THREE.Box3(c.clone().subScalar(45), c.clone().addScalar(45))); }
+    placed = { id, side: res.side };
   }
   const stepSet = stepMeshes(app, res, step);
   void app.registry.ensure(stepSet).then(() => applyStates(app));
@@ -114,8 +123,8 @@ export function setSyndromeStep(app: App, step: number): void {
 }
 
 export function exitSyndrome(app: App, notify = true): void {
-  for (const m of shownForSyndrome) setStructureVisible(app, m, false);
-  shownForSyndrome = [];
+  restoreShown?.(); restoreShown = null;
+  placed = null;
   app.lesion.visible = false;
   if (notify || app.store.get().syndrome) app.store.set({ syndrome: null, involved: new Set(), stepHighlight: new Set() });
   applyStates(app);

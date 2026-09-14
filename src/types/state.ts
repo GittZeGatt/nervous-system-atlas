@@ -28,7 +28,7 @@ export interface AppState {
   involved: ReadonlySet<string>;             // meshes involved in the active syndrome
   stepHighlight: ReadonlySet<string>;        // meshes spotlighted for the current deficit step
   lesionSide: 'l' | 'r' | null;              // demo side for lateralised syndromes
-  panel: { kind: 'quiz'; index: number } | { kind: 'glossary'; id: string | null } | { kind: 'topic'; id: string | null } | { kind: 'about' } | null;
+  panel: { kind: 'quiz'; index: number } | { kind: 'glossary'; id: string | null } | { kind: 'topic'; id: string | null } | { kind: 'about' } | { kind: 'pathway'; id: string } | null;
   camera: PresetName | 'custom';
   showNc: boolean;
   quality: 'low' | 'high';

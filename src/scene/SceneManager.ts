@@ -308,7 +308,7 @@ export class SceneManager {
   private tween: { from: THREE.Vector3; to: THREE.Vector3; tFrom: THREE.Vector3; tTo: THREE.Vector3; start: number; ms: number } | null = null;
 
   moveCamera(position: THREE.Vector3, target: THREE.Vector3, ms = 350): void {
-    if (ms <= 0) { this.camera.position.copy(position); this.controls.target.copy(target); this.controls.update(); this.requestRender(); return; }
+    if (ms <= 0) { this.tween = null; this.camera.position.copy(position); this.controls.target.copy(target); this.controls.update(); this.requestRender(); return; }
     this.tween = { from: this.camera.position.clone(), to: position.clone(), tFrom: this.controls.target.clone(), tTo: target.clone(), start: performance.now(), ms };
     const step = () => {
       if (!this.tween) return;

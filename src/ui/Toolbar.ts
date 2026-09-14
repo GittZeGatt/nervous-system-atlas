@@ -22,6 +22,8 @@ export class Toolbar {
   /** what the status line says, kept as data so it can be re-rendered in the other language */
   private counts: { meshes: number; authored: number | null } = { meshes: 0, authored: null };
   private error: string | null = null;
+  /** set by main.ts once the router exists: writes the exact view into the address bar and the clipboard */
+  onShareView: () => void = () => {};
 
   constructor(private app: App, container: HTMLElement,
     opts: { onSearchFocus(): void; onHelp(): void; onTogglePanel(side: 'left' | 'right'): void }) {
@@ -54,6 +56,7 @@ export class Toolbar {
         btn('toolbar.about', 'toolbar.about.title', { class: 'about-btn', onclick: () => { location.hash = '#/about'; } }),
         this.qualityBtn,
         btn('toolbar.screenshot', 'toolbar.screenshot.title', { class: 'shot-btn', onclick: () => this.shot() }),
+        btn('toolbar.share', 'toolbar.share.title', { class: 'share-btn', 'data-testid': 'share-view', onclick: () => this.onShareView() }),
         this.localeBtn,
         this.helpBtn,
         this.status),

@@ -24,6 +24,7 @@ export function createStore<S extends object>(initial: S): Store<S> {
   let state = initial;
   const subs = new Set<(s: S) => void>();
   let notifying = false;
+  let pending = false;
   return {
     get: () => state,
     set(patch) {
@@ -32,9 +33,20 @@ export function createStore<S extends object>(initial: S): Store<S> {
       for (const k in p) if (!Object.is((state as Record<string, unknown>)[k], (p as Record<string, unknown>)[k])) { changed = true; break; }
       if (!changed) return;
       state = { ...state, ...p };
-      if (notifying) return;      // nested sets are folded into the running notification pass
+      // A set made from inside a subscriber is folded into the running pass: the subscribers not yet visited
+      // see the newer state, and the ones already visited get another pass afterwards, so nobody misses a
+      // change because of where they sit in the subscription order. Each subscriber compares against what
+      // it last saw, so the extra pass only calls the ones whose selection actually moved.
+      if (notifying) { pending = true; return; }
       notifying = true;
-      try { for (const fn of Array.from(subs)) fn(state); } finally { notifying = false; }
+      try {
+        let passes = 0;
+        do {
+          pending = false;
+          for (const fn of Array.from(subs)) fn(state);
+          if (++passes > 50) { console.error('store: subscribers keep changing state in response to each other; giving up after 50 passes'); break; }
+        } while (pending);
+      } finally { notifying = false; pending = false; }
     },
     subscribe(select, cb, eq = Object.is) {
       let prev = select(state);

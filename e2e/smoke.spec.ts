@@ -497,3 +497,128 @@ test('the contrast menu lists the T1, the T2 and every subject scan, and a linke
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => (window as unknown as Win).atlas.store.get().contrast)).toBe(subject ?? 't2w');
 });
+
+// ---- interaction correctness: teaching modes, Mirror, slow loads, links (added after an external review)
+type StateWin = { atlas: { store: { get(): Record<string, unknown>; set(p: Record<string, unknown>): void }; lesion: { position: { x: number }; visible: boolean };
+  registry: { byId: Map<string, { centroid: number[] }> }; sm: { camera: { position: { x: number; y: number; z: number; set(x: number, y: number, z: number): void } }; controls: { target: { x: number; y: number; z: number; set(x: number, y: number, z: number): void }; update(): void } } } };
+const overrides = (page: Page) => page.evaluate(() => { const s = (window as unknown as StateWin).atlas.store.get(); return { hidden: [...(s['hiddenStructures'] as Set<string>)], shown: [...(s['shownStructures'] as Set<string>)], involved: [...(s['involved'] as Set<string>)] }; });
+
+test('Mirror moves the lesion marker, the involved meshes, the slices and the link to the other side', async ({ page }) => {
+  await boot(page, '#/syndrome/syn-aphasia-broca');
+  await expect(page.locator('#syndrome-bar')).toBeVisible({ timeout: 30_000 });
+  const before = await page.evaluate(() => { const a = (window as unknown as StateWin).atlas; const s = a.store.get(); return { x: a.lesion.position.x, visible: a.lesion.visible, sag: (s['slices'] as { sagittal: number }).sagittal, involved: [...(s['involved'] as Set<string>)] }; });
+  expect(before.visible).toBe(true);
+  expect(before.x).toBeLessThan(0);
+  expect(before.involved.some((m) => m.endsWith('-l'))).toBe(true);
+  expect(before.involved.some((m) => m.endsWith('-r'))).toBe(false);
+  await page.locator('#syndrome-bar').getByRole('button', { name: /Mirror|Aynala/ }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as StateWin).atlas.lesion.position.x)).toBe(-before.x);
+  const after = await page.evaluate(() => { const s = (window as unknown as StateWin).atlas.store.get(); return { sag: (s['slices'] as { sagittal: number }).sagittal, involved: [...(s['involved'] as Set<string>)], side: s['lesionSide'] }; });
+  expect(after.side).toBe('r');
+  expect(after.sag).toBe(-before.sag);
+  expect(after.involved.some((m) => m.endsWith('-r'))).toBe(true);
+  expect(after.involved.some((m) => m.endsWith('-l'))).toBe(false);
+  await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/side=r/);
+});
+
+test('leaving a syndrome, a pathway, a topic or a quiz reveal leaves the anatomy as it was before', async ({ page }) => {
+  await boot(page);
+  expect(await overrides(page)).toEqual({ hidden: [], shown: [], involved: [] });
+  // a syndrome whose involved meshes include structures that are on screen by default (the cerebrum is)
+  await page.evaluate(() => { location.hash = '#/syndrome/syn-aphasia-broca'; });
+  await expect(page.locator('#syndrome-bar')).toBeVisible({ timeout: 30_000 });
+  expect((await overrides(page)).involved.length).toBeGreaterThan(0);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#syndrome-bar')).toBeHidden({ timeout: 30_000 });
+  expect(await overrides(page)).toEqual({ hidden: [], shown: [], involved: [] });
+  // a pathway
+  await page.evaluate(() => { location.hash = '#/pathway/pathway-anterior-corticospinal'; });
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/corticospinal/i, { timeout: 30_000 });
+  await page.evaluate(() => { location.hash = '#/slice'; });
+  await expect.poll(() => overrides(page)).toEqual({ hidden: [], shown: [], involved: [] });
+  // a topic
+  await page.evaluate(() => { location.hash = '#/topic/topic-epilepsy-localization'; });
+  await expect.poll(() => overrides(page).then((o) => o.involved.length), { timeout: 30_000 }).toBeGreaterThan(3);
+  await page.evaluate(() => { location.hash = '#/slice'; });
+  await expect.poll(() => overrides(page)).toEqual({ hidden: [], shown: [], involved: [] });
+  // a quiz reveal
+  await page.evaluate(() => { location.hash = '#/quiz'; });
+  await expect(page.locator('#right .content:not([hidden]) .opt').first()).toBeVisible({ timeout: 30_000 });
+  await page.locator('#right .content:not([hidden]) .opt').first().click();
+  await expect.poll(() => overrides(page).then((o) => o.involved.length), { timeout: 30_000 }).toBeGreaterThan(0);
+  await page.evaluate(() => { location.hash = '#/slice'; });
+  await expect.poll(() => overrides(page)).toEqual({ hidden: [], shown: [], involved: [] });
+});
+
+test('a slower earlier selection cannot move the slices away from the structure selected after it', async ({ page }) => {
+  await boot(page);
+  // the dev server serves the app's own module, so this is the same selectStructure the tree calls
+  await page.evaluate(async () => {
+    const { selectStructure } = await import('/src/state/actions.ts') as { selectStructure(app: unknown, id: string, o: Record<string, boolean>): void };
+    const a = (window as unknown as StateWin).atlas;
+    selectStructure(a, 'putamen-l', { moveSlices: true });
+    selectStructure(a, 'hippocampus-r', { moveSlices: true });
+  });
+  await page.waitForTimeout(3000);
+  const r = await page.evaluate(() => { const a = (window as unknown as StateWin).atlas; const s = a.store.get(); return { sel: s['selectedId'], sag: (s['slices'] as { sagittal: number }).sagittal, want: a.registry.byId.get('hippocampus-r')!.centroid }; });
+  expect(r.sel).toBe('hippocampus-r');
+  expect(r.sag).toBe(Math.round(r.want[0]!));
+});
+
+test('a pathway keeps its link while the reader moves slices and picks waypoints, and survives a reload', async ({ page }) => {
+  await boot(page, '#/pathway/pathway-anterior-corticospinal');
+  const title = page.locator('#right .content:not([hidden]) h2').first();
+  await expect(title).toContainText(/corticospinal/i, { timeout: 30_000 });
+  await page.mouse.click(700, 450);                    // focus the canvas so the arrow key reaches the app
+  await page.keyboard.press('ArrowUp');
+  await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/^#\/pathway\/pathway-anterior-corticospinal\?.*ax=/);
+  await page.locator('.wp-pick:enabled').first().click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as StateWin).atlas.store.get()['selectedId'])).not.toBeNull();
+  await expect(title).toContainText(/corticospinal/i);
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => location.hash)).toMatch(/^#\/pathway\/pathway-anterior-corticospinal/);
+  await page.reload();
+  await page.waitForFunction(() => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true, null, { timeout: 60_000 });
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/corticospinal/i, { timeout: 30_000 });
+});
+
+test('Share view writes the exact scene into the link, and the link reproduces it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const a = (window as unknown as StateWin).atlas;
+    a.store.set({ visibleSystems: new Set(['brainstem', 'cerebellum']), shownStructures: new Set(['putamen-l']), hiddenStructures: new Set(['pons']) });
+    const sl = a.store.get()['slices'] as Record<string, unknown>;
+    a.store.set({ slices: { ...sl, visible: { axial: false, coronal: true, sagittal: true }, pinned: true }, peel: { sagittal: 'positive' }, contrast: 't2w' });
+    a.sm.camera.position.set(100, 200, 300); a.sm.controls.target.set(1, 2, 3); a.sm.controls.update();
+  });
+  await page.getByTestId('share-view').click();
+  const hash = await page.evaluate(() => location.hash);
+  expect(hash).toMatch(/^#\/slice\?/);
+  for (const part of ['cam=100,200,300,1,2,3', 'sys=brainstem,cerebellum', 'show=putamen-l', 'hide=pons', 'sl=cs', 'peel=sp', 'pin=1', 'c=t2w']) expect(hash).toContain(part);
+  await expect(page.locator('.toast')).toBeVisible();
+  await boot(page, hash);
+  await page.waitForTimeout(600);                      // past the boot preset's tween
+  const got = await page.evaluate(() => { const a = (window as unknown as StateWin).atlas; const s = a.store.get(); return {
+    cam: [a.sm.camera.position.x, a.sm.camera.position.y, a.sm.camera.position.z, a.sm.controls.target.x, a.sm.controls.target.y, a.sm.controls.target.z].map((v) => Math.round(v)),
+    sys: [...(s['visibleSystems'] as Set<string>)].sort(), shown: [...(s['shownStructures'] as Set<string>)], hidden: [...(s['hiddenStructures'] as Set<string>)],
+    visible: (s['slices'] as { visible: Record<string, boolean> }).visible, pinned: (s['slices'] as { pinned: boolean }).pinned, peel: s['peel'], contrast: s['contrast'] }; });
+  expect(got.cam).toEqual([100, 200, 300, 1, 2, 3]);
+  expect(got.sys).toEqual(['brainstem', 'cerebellum']); expect(got.shown).toEqual(['putamen-l']); expect(got.hidden).toEqual(['pons']);
+  expect(got.visible).toEqual({ axial: false, coronal: true, sagittal: true }); expect(got.pinned).toBe(true);
+  expect(got.peel).toEqual({ sagittal: 'positive' }); expect(got.contrast).toBe('t2w');
+});
+
+test('quiz answers survive a reload, and the filters narrow the set', async ({ page }) => {
+  await boot(page, '#/quiz');
+  const opts = page.locator('#right .content:not([hidden]) .opt');
+  await expect(opts.first()).toBeVisible({ timeout: 30_000 });
+  await opts.first().click();
+  await expect(page.locator('#right .content:not([hidden]) .reveal')).toBeVisible();
+  await page.reload();
+  await page.waitForFunction(() => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true, null, { timeout: 60_000 });
+  await expect(page.locator('#right .content:not([hidden]) .reveal')).toBeVisible({ timeout: 30_000 });
+  const filters = page.locator('#right .content:not([hidden]) .quiz-filters select');
+  await filters.nth(1).selectOption('3');
+  await expect(page.locator('#right .content:not([hidden]) .crumbs')).toContainText(/3\/3|zorluk 3/);
+  await expect(page.locator('#right .content:not([hidden]) .crumbs')).toContainText(/1\/3/);
+});

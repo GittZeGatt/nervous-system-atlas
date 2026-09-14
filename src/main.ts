@@ -23,11 +23,11 @@ import { makeIntensityTexture, makeLabelTexture } from './volume/textures.ts';
 import { gridBoxMm, mmToVoxel } from './volume/coords.ts';
 import { indexSpineLut, loadSpineLut, spineLevelAt, spineLevelLabel, spineMask } from './volume/spineLabels.ts';
 import type { SystemId } from './types/manifest.ts';
-import type { Axis, Contrast } from './types/state.ts';
+import type { AppState, Axis, Contrast } from './types/state.ts';
 import { PRESETS } from './scene/cameraPresets.ts';
 import { applyCameraPreset, contrasts, setContrast, setSliceVisible, setPeel } from './state/actions.ts';
 import { sameSet } from './state/actions.ts';
-import { bindRouter } from './router/hashRouter.ts';
+import { bindRouter, paramsOf, routeOf, serialize, viewParams, type Route, type RouteParams } from './router/hashRouter.ts';
 import type { ContentBundle } from './types/content.ts';
 import { getLocale, onLocaleChange, otherLocale, setLocale, t } from './i18n/index.ts';
 
@@ -89,8 +89,9 @@ async function boot(): Promise<void> {
   const topicHost = h('div', { class: 'content', hidden: true }); right.append(topicHost); const topicPanel = new TopicPanel(app, topicHost);
   const aboutHost = h('div', { class: 'content', hidden: true }); right.append(aboutHost); const aboutPanel = new AboutPanel(app, aboutHost);
   const mainPanel = right.firstElementChild as HTMLElement;
-  const showPanel = (which: 'main' | 'pathway' | 'syndrome' | 'quiz' | 'glossary' | 'topic' | 'about') => { mainPanel.hidden = which !== 'main'; pathwayHost.hidden = which !== 'pathway'; syndromeHost.hidden = which !== 'syndrome'; quizHost.hidden = which !== 'quiz'; glossaryHost.hidden = which !== 'glossary'; topicHost.hidden = which !== 'topic'; aboutHost.hidden = which !== 'about'; if (which !== 'quiz') quizPanel.exit(); if (which !== 'topic') topicPanel.exit(); if (which !== 'quiz' && which !== 'glossary' && which !== 'topic' && which !== 'about' && app.store.get().panel) app.store.set({ panel: null }); };
-  const showPathway = (id: string | null) => { if (id) { pathwayPanel.show(id); showPanel('pathway'); } else { pathwayPanel.exit(); if (!pathwayHost.hidden) showPanel('main'); } };
+  const showPanel = (which: 'main' | 'pathway' | 'syndrome' | 'quiz' | 'glossary' | 'topic' | 'about') => { mainPanel.hidden = which !== 'main'; pathwayHost.hidden = which !== 'pathway'; syndromeHost.hidden = which !== 'syndrome'; quizHost.hidden = which !== 'quiz'; glossaryHost.hidden = which !== 'glossary'; topicHost.hidden = which !== 'topic'; aboutHost.hidden = which !== 'about'; if (which !== 'quiz') quizPanel.exit(); if (which !== 'topic') topicPanel.exit(); if (which !== 'quiz' && which !== 'glossary' && which !== 'topic' && which !== 'about' && which !== 'pathway' && app.store.get().panel) app.store.set({ panel: null }); };
+  // the open pathway lives in the store so the router keeps #/pathway/<id> while the reader moves slices or selects a waypoint
+  const showPathway = (id: string | null) => { if (id) { pathwayPanel.show(id); showPanel('pathway'); app.store.set({ panel: { kind: 'pathway', id } }); } else { pathwayPanel.exit(); if (app.store.get().panel?.kind === 'pathway') app.store.set({ panel: null }); if (!pathwayHost.hidden) showPanel('main'); } };
   void contentPanel;
   const help = h('div', { class: 'help', hidden: true });
   const renderHelp = (): void => {
@@ -181,7 +182,8 @@ async function boot(): Promise<void> {
   app.store.subscribe((s) => s.shownStructures, () => syncVisibility(app), sameSet);
   app.store.subscribe((s) => s.showNc, () => { syncVisibility(app); tree.render(); });
   // picking a structure while a quiz / glossary / topic panel is open returns to the structure panel
-  app.store.subscribe((s) => s.selectedId, (id) => { if (id && app.store.get().panel && !app.store.get().syndrome) { app.store.set({ panel: null }); showPanel('main'); } });
+  // (a pathway stays open: selecting one of its waypoints is part of reading it)
+  app.store.subscribe((s) => s.selectedId, (id) => { const p = app.store.get().panel; if (id && p && p.kind !== 'pathway' && !app.store.get().syndrome) { app.store.set({ panel: null }); showPanel('main'); } });
   // In overlay mode the detail panel is closed by default, so selecting a structure would otherwise write
   // its text into something the reader cannot see. Open it for them, and get the tree out of the way.
   app.store.subscribe((s) => s.selectedId, (id) => {
@@ -276,8 +278,42 @@ async function boot(): Promise<void> {
   } catch (e) { console.warn('no content bundle', e); }
   if (getLocale() === 'tr') await ensureTr();
   void search.load('data/search-index.json', manifest.meshes.filter((m) => !app.content?.structures[m.structureId]).map((m) => ({ id: m.id, kind: 'mesh', name: m.name, aliases: [], summary: t('search.unauthored', { system: m.system, side: m.side }) })));
+  // "Share view" links carry the camera, the visible systems and overrides, the slice visibility and the peels;
+  // they are applied after the route so that nothing the route does (a preset, a fit) overrides them
+  const applyView = (p: RouteParams): void => {
+    if (p.sys) {
+      const known = new Set<string>(app.manifest.systems.map((x) => x.id));
+      const ids = (l?: string[]): Set<string> => new Set((l ?? []).filter((m) => app.registry.byId.has(m)));
+      app.store.set({ visibleSystems: new Set(p.sys.filter((x) => known.has(x)) as SystemId[]), shownStructures: ids(p.show), hiddenStructures: ids(p.hide) });
+    }
+    if (p.sl !== undefined || p.pin !== undefined) {
+      const sl = app.store.get().slices;
+      const visible = p.sl !== undefined ? { axial: p.sl.includes('a'), coronal: p.sl.includes('c'), sagittal: p.sl.includes('s') } : sl.visible;
+      app.store.set({ slices: { ...sl, visible, pinned: p.pin ?? sl.pinned } });
+    }
+    if (p.peel !== undefined) {
+      const peel: AppState['peel'] = {};
+      for (const part of p.peel.split(',')) { const axis = ({ a: 'axial', c: 'coronal', s: 'sagittal' } as Record<string, Axis>)[part[0]!]; if (axis) peel[axis] = part[1] === 'p' ? 'positive' : 'negative'; }
+      app.store.set({ peel });
+    }
+    if (p.cam) { app.sm.moveCamera(new THREE.Vector3(p.cam[0], p.cam[1], p.cam[2]), new THREE.Vector3(p.cam[3], p.cam[4], p.cam[5]), 0); app.store.set({ camera: 'custom' }); }
+  };
+  const toast = h('div', { class: 'toast', role: 'status' }); toast.hidden = true; document.getElementById('viewport')!.append(toast);
+  let toastTimer = 0;
+  const showToast = (text: string): void => { toast.textContent = text; toast.hidden = false; clearTimeout(toastTimer); toastTimer = window.setTimeout(() => { toast.hidden = true; }, 2500); };
+  /** Put the exact scene into the address bar and the clipboard: what a plain link leaves to defaults is written out. */
+  const shareView = async (): Promise<void> => {
+    const s = app.store.get();
+    const hash = serialize(routeOf(s), { ...paramsOf(s), ...viewParams(s, { position: app.sm.camera.position, target: app.sm.controls.target }) });
+    history.replaceState(null, '', hash);
+    try { await navigator.clipboard.writeText(location.href); showToast(t('share.copied')); }
+    catch { showToast(t('share.inBar')); }
+  };
+  toolbar.onShareView = () => { void shareView(); };
   bindRouter(app.store, {
-    onRoute(route, params) {
+    onRoute(route, params) { routeTo(route, params); applyView(params); },
+  });
+  function routeTo(route: Route, params: RouteParams): void {
       if (params.lang && params.lang !== getLocale()) setLocale(params.lang);
       if (params.ax !== undefined || params.cor !== undefined || params.sag !== undefined) setSlices(app, { ...(params.ax !== undefined ? { axial: params.ax } : {}), ...(params.cor !== undefined ? { coronal: params.cor } : {}), ...(params.sag !== undefined ? { sagittal: params.sag } : {}) });
       if (params.c) setContrast(app, params.c);
@@ -300,13 +336,12 @@ async function boot(): Promise<void> {
       if (route.kind === 'structure') {
         // route ids may be structure ids or mesh ids
         const meshId = app.registry.byId.has(route.id) ? route.id : (app.manifest.meshes.find((m) => m.structureId === route.id)?.id ?? null);
-        if (meshId) { if (app.store.get().selectedId !== meshId) selectStructure(app, meshId, { moveSlices: params.ax === undefined, fit: true }); }
+        if (meshId) { if (app.store.get().selectedId !== meshId) selectStructure(app, meshId, { moveSlices: params.ax === undefined, fit: !params.cam }); }
         // no mesh: in the public edition the source atlas of this structure may not be redistributed, so the
         // content is there and the geometry is not. Open the panel anyway rather than silently doing nothing.
         else if (app.content?.structures[route.id]) app.store.set({ selectedId: null, selectedStructureId: route.id });
       } else if (route.kind === 'home') { /* keep state */ }
-    },
-  });
+  }
 
   // ---- volumes (T1 first, then labels) in the background
   void (async () => {

@@ -60,6 +60,10 @@ export const en = {
   'toolbar.quality.title': 'Render quality: high adds ambient occlusion, soft shadows and anti-aliasing',
   'toolbar.screenshot': 'Screenshot',
   'toolbar.screenshot.title': 'Screenshot [Shift+S]',
+  'toolbar.share': 'Share view',
+  'toolbar.share.title': 'Copy a link that reproduces this exact view: camera, visible structures, slices, peels, contrast and the open panel',
+  'share.copied': 'Link copied to the clipboard',
+  'share.inBar': 'The link is in the address bar',
   'toolbar.help.title': 'Keyboard shortcuts [?]',
 
   // ---- camera presets
@@ -256,6 +260,12 @@ export const en = {
   'quiz.prev': '◀ Previous',
   'quiz.next': 'Next ▶',
   'quiz.restart': 'Restart',
+  'quiz.filter.type': 'Type',
+  'quiz.filter.difficulty': 'Difficulty',
+  'quiz.filter.all': 'all',
+  'quiz.missed': 'Missed only ({n})',
+  'quiz.filtered': '{n}/{total} in this selection',
+  'quiz.saved': 'Your answers are kept in this browser; Restart clears them.',
 
   // ---- glossary
   'glossary.title': 'Glossary',

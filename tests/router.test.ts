@@ -13,6 +13,26 @@ describe('hash router', () => {
     expect(parseHash('#/slice?c=flair').params.c).toBeUndefined();
     expect(serialize({ kind: 'slice' }, { c: 'subject-colin27' })).toBe('#/slice?c=subject-colin27');
   });
+  it('keeps a pathway in the hash next to the slice params', () => {
+    const h = serialize({ kind: 'pathway', id: 'pw-corticospinal' }, { ax: 12, c: 't2w' });
+    expect(h).toBe('#/pathway/pw-corticospinal?ax=12&c=t2w');
+    expect(parseHash(h)).toEqual({ route: { kind: 'pathway', id: 'pw-corticospinal' }, params: { ax: 12, cor: undefined, sag: undefined, c: 't2w' } });
+  });
+  it('round-trips a full view (camera, systems, overrides, slices, peels) and drops malformed ones', () => {
+    const view = { cam: [-420.04, 0, 20, 0, -18.06, 10] as [number, number, number, number, number, number], sys: ['cerebrum', 'brainstem'], show: ['putamen-l'], hide: ['thalamus-r'], sl: 'ac', peel: 'ap,sn', pin: true };
+    const h = serialize({ kind: 'structure', id: 'putamen-l' }, { ax: 2, ...view });
+    expect(h).toBe('#/structure/putamen-l?ax=2&cam=-420,0,20,0,-18.1,10&sys=cerebrum,brainstem&show=putamen-l&hide=thalamus-r&sl=ac&peel=ap,sn&pin=1');
+    const { params } = parseHash(h);
+    expect(params.cam).toEqual([-420, 0, 20, 0, -18.1, 10]);
+    expect(params.sys).toEqual(['cerebrum', 'brainstem']); expect(params.show).toEqual(['putamen-l']); expect(params.hide).toEqual(['thalamus-r']);
+    expect(params.sl).toBe('ac'); expect(params.peel).toBe('ap,sn'); expect(params.pin).toBe(true);
+    // an empty system list is "nothing on", which is different from no sys param at all
+    expect(parseHash('#/slice?sys=').params.sys).toEqual([]);
+    expect(parseHash('#/slice').params.sys).toBeUndefined();
+    expect(parseHash('#/slice?sl=-').params.sl).toBe('-');
+    const junk = parseHash('#/slice?cam=1,2,3&sl=xyz&peel=a&show=../x,ok-1&pin=yes').params;
+    expect(junk.cam).toBeUndefined(); expect(junk.sl).toBeUndefined(); expect(junk.peel).toBeUndefined(); expect(junk.show).toEqual(['ok-1']); expect(junk.pin).toBeUndefined();
+  });
   it('parses syndrome step and tolerates junk', () => {
     expect(parseHash('#/syndrome/syn-wallenberg-lateral-medullary?step=2&ax=abc').route).toEqual({ kind: 'syndrome', id: 'syn-wallenberg-lateral-medullary', step: 2 });
     expect(parseHash('').route).toEqual({ kind: 'home' });

@@ -57,6 +57,10 @@ export const tr: Record<keyof typeof en, string> = {
   'toolbar.quality.title': 'Görüntü kalitesi: yüksek kipte ortam okluzyonu, yumuşak gölgeler ve kenar yumuşatma eklenir',
   'toolbar.screenshot': 'Ekran görüntüsü',
   'toolbar.screenshot.title': 'Ekran görüntüsü [Shift+S]',
+  'toolbar.share': 'Görünümü paylaş',
+  'toolbar.share.title': 'Bu görünümü aynen yeniden kuran bir bağlantı kopyala: kamera, görünen yapılar, kesitler, soyma, kontrast ve açık panel',
+  'share.copied': 'Bağlantı panoya kopyalandı',
+  'share.inBar': 'Bağlantı adres çubuğunda',
   'toolbar.help.title': 'Klavye kısayolları [?]',
 
   // ---- kamera açıları
@@ -253,6 +257,12 @@ export const tr: Record<keyof typeof en, string> = {
   'quiz.prev': '◀ Önceki',
   'quiz.next': 'Sonraki ▶',
   'quiz.restart': 'Baştan başla',
+  'quiz.filter.type': 'Tür',
+  'quiz.filter.difficulty': 'Zorluk',
+  'quiz.filter.all': 'tümü',
+  'quiz.missed': 'Yalnızca yanlışlar ({n})',
+  'quiz.filtered': 'bu seçimde {n}/{total}',
+  'quiz.saved': 'Yanıtlarınız bu tarayıcıda saklanır; Baştan başla siler.',
 
   // ---- sözlük
   'glossary.title': 'Sözlük',

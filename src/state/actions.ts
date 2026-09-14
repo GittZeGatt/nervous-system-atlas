@@ -57,6 +57,33 @@ export function setStructureVisible(app: App, id: string, on: boolean): void {
 }
 
 /**
+ * Show meshes for the duration of a teaching mode (a syndrome, a pathway, a quiz reveal, a topic) and hand back
+ * the function that undoes exactly that. Only meshes that are not visible right now are touched, and each one
+ * goes back to the override it had before (shown, hidden or neither): a mesh that was on screen through its
+ * system's defaults was never "shown" by the mode, so leaving the mode cannot hide anatomy the reader had.
+ */
+export function showForMode(app: App, ids: Iterable<string>): () => void {
+  const s = app.store.get();
+  const prior = new Map<string, 'shown' | 'hidden' | 'none'>();
+  const hidden = new Set(s.hiddenStructures); const shown = new Set(s.shownStructures);
+  for (const id of ids) {
+    if (prior.has(id) || !app.registry.byId.has(id) || meshShouldBeVisible(app, id)) continue;
+    prior.set(id, shown.has(id) ? 'shown' : hidden.has(id) ? 'hidden' : 'none');
+    hidden.delete(id); shown.add(id);
+  }
+  if (prior.size) app.store.set({ hiddenStructures: hidden, shownStructures: shown });
+  let done = false;
+  return () => {
+    if (done) return; done = true;
+    if (!prior.size) return;
+    const st = app.store.get();
+    const h = new Set(st.hiddenStructures); const sh = new Set(st.shownStructures);
+    for (const [id, was] of prior) { h.delete(id); sh.delete(id); if (was === 'shown') sh.add(id); else if (was === 'hidden') h.add(id); }
+    app.store.set({ hiddenStructures: h, shownStructures: sh });
+  };
+}
+
+/**
  * Show or hide every mesh of a tree group at once (a system row or a subsystem row).
  * Ticking a group means "show all of it", so meshes the manifest hides by default come on too;
  * unticking hides them whatever their system flag says. Pass `system` for a whole-system row so
@@ -100,7 +127,8 @@ export function selectStructure(app: App, id: string | null, opts: { moveSlices?
   app.store.set({ selectedId: id, selectedStructureId: null });
   if (id) {
     void app.registry.ensureFull(id).then((mesh) => {
-      if (!mesh) return;
+      // a slower load must not move the slices or the camera to something no longer selected
+      if (!mesh || app.store.get().selectedId !== id) return;
       const entry = app.registry.byId.get(id)!;
       if (opts.moveSlices !== false && !app.store.get().slices.pinned) {
         const c = entry.centroid;

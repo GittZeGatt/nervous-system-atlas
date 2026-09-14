@@ -3,7 +3,7 @@ import { h, clear, enTag, secondaryName } from './dom.ts';
 import { entryName, meshLabel, t, type Key, type NamedEntry, entriesOf } from '../i18n/index.ts';
 import { citeNode } from './cite.ts';
 import type { Citation } from '../types/content.ts';
-import { applyStates } from '../state/actions.ts';
+import { applyStates, showForMode } from '../state/actions.ts';
 import { sourceLine } from './sourceLine.ts';
 
 type Rec = Record<string, unknown>;
@@ -18,7 +18,7 @@ const categoryLabel = (c: string): string => { const k = CATEGORY_KEY[c]; return
 /** Right panel for clinical topics (development, CSF physiology, transmitters, EEG, epilepsy, dementia, neuromuscular …).
  *  With no id it lists every topic by category; with an id it renders the sections and spotlights the topic's meshes. */
 export class TopicPanel {
-  private shown: string[] = [];
+  private restoreShown: (() => void) | null = null;
   private currentId: string | undefined;
   private current: Rec | undefined;
   constructor(private app: App, private container: HTMLElement) {
@@ -82,11 +82,12 @@ export class TopicPanel {
     this.container.append(el);
     // spotlight the topic's meshes in the 3D view
     if (meshIds.length) {
-      this.shown = meshIds;
+      this.restoreShown?.();
+      const restore = showForMode(this.app, meshIds);
+      this.restoreShown = restore;
       void this.app.registry.ensure(meshIds).then(() => {
-        const st = this.app.store.get();
-        const shown = new Set(st.shownStructures); for (const m of meshIds) shown.add(m);
-        this.app.store.set({ shownStructures: shown, involved: new Set(meshIds) });
+        if (this.restoreShown !== restore) return;     // another topic (or none) took over while this one loaded
+        this.app.store.set({ involved: new Set(meshIds) });
         applyStates(this.app);
       });
     }
@@ -109,13 +110,11 @@ export class TopicPanel {
 
   /** Clear the spotlight when leaving a topic (never touch an active syndrome). */
   exit(): void {
-    if (!this.shown.length) return;
-    const st = this.app.store.get();
-    if (!st.syndrome) {
-      const shown = new Set(st.shownStructures); for (const m of this.shown) shown.delete(m);
-      this.app.store.set({ shownStructures: shown, involved: new Set() });
+    if (!this.restoreShown) return;
+    this.restoreShown(); this.restoreShown = null;
+    if (!this.app.store.get().syndrome) {
+      this.app.store.set({ involved: new Set() });
       applyStates(this.app);
     }
-    this.shown = [];
   }
 }

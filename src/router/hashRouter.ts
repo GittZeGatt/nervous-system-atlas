@@ -13,7 +13,22 @@ export type Route =
   | { kind: 'about' }
   | { kind: 'slice' };
 
-export interface RouteParams { ax?: number; cor?: number; sag?: number; c?: Contrast; side?: 'l' | 'r'; lang?: Locale }
+/**
+ * The part of a link that the app's own hash rewriting leaves out: everything the reader can change about
+ * the scene beyond the slice positions and the contrast. "Share view" writes these; a plain link never carries
+ * them, so ordinary URLs stay short.
+ */
+export interface ViewParams {
+  cam?: [number, number, number, number, number, number];   // camera position, then its orbit target, MNI mm
+  sys?: string[];                                            // visible systems (an empty list = none)
+  show?: string[]; hide?: string[];                          // per-mesh overrides on top of the systems
+  sl?: string;                                               // visible slices as letters of a/c/s, '-' for none
+  peel?: string;                                             // clipping, e.g. "ap,sn": axis letter, then p/n for the side kept
+  pin?: boolean;                                             // slices pinned (a selection does not move them)
+}
+export interface RouteParams extends ViewParams { ax?: number; cor?: number; sag?: number; c?: Contrast; side?: 'l' | 'r'; lang?: Locale }
+const ID = /^[a-z0-9._-]+$/i;
+const AXES: Axis[] = ['axial', 'coronal', 'sagittal'];
 
 export function parseHash(hash: string): { route: Route; params: RouteParams } {
   const h = hash.replace(/^#\/?/, '');
@@ -24,6 +39,11 @@ export function parseHash(hash: string): { route: Route; params: RouteParams } {
   const c = q.get('c'); if (isContrast(c)) params.c = c;
   const side = q.get('side'); if (side === 'l' || side === 'r') params.side = side;
   const lang = q.get('lang'); if (lang === 'en' || lang === 'tr') params.lang = lang;
+  const cam = q.get('cam'); if (cam) { const n = cam.split(',').map(Number); if (n.length === 6 && n.every(Number.isFinite)) params.cam = n as ViewParams['cam']; }
+  for (const k of ['sys', 'show', 'hide'] as const) { const v = q.get(k); if (v !== null) params[k] = v.split(',').filter((x) => ID.test(x)); }
+  const sl = q.get('sl'); if (sl !== null && /^(-|[acs]{0,3})$/.test(sl)) params.sl = sl;
+  const peel = q.get('peel'); if (peel && /^[acs][pn](,[acs][pn])*$/.test(peel)) params.peel = peel;
+  if (q.get('pin') === '1') params.pin = true;
   const seg = (path ?? '').split('/').filter(Boolean);
   let route: Route = { kind: 'home' };
   if (seg[0] === 'structure' && seg[1]) route = { kind: 'structure', id: seg[1] };
@@ -55,23 +75,62 @@ export function serialize(route: Route, params: RouteParams): string {
   if (params.c) q.set('c', params.c);
   if (params.side) q.set('side', params.side);
   if (params.lang) q.set('lang', params.lang);
-  const qs = q.toString();
+  if (params.cam) q.set('cam', params.cam.map((x) => String(Math.round(x * 10) / 10)).join(','));
+  if (params.sys) q.set('sys', params.sys.join(','));
+  if (params.show?.length) q.set('show', params.show.join(','));
+  if (params.hide?.length) q.set('hide', params.hide.join(','));
+  if (params.sl !== undefined) q.set('sl', params.sl);
+  if (params.peel) q.set('peel', params.peel);
+  if (params.pin) q.set('pin', '1');
+  const qs = q.toString().replace(/%2C/g, ',');      // commas are safe in a fragment, and the lists read better
   return `#/${path}${qs ? '?' + qs : ''}`;
+}
+
+/** The route the state is in: an active syndrome wins, then an open panel, then the selection, else the plain view. */
+export function routeOf(s: AppState): Route {
+  const syn = s.syndrome; const panel = s.panel; const sel = s.selectedId ?? s.selectedStructureId;
+  if (syn) return { kind: 'syndrome', id: syn.id, step: syn.step >= 0 ? syn.step : undefined };
+  if (panel?.kind === 'quiz') return { kind: 'quiz', index: panel.index };
+  if (panel?.kind === 'glossary') return { kind: 'glossary', id: panel.id ?? undefined };
+  if (panel?.kind === 'topic') return { kind: 'topic', id: panel.id ?? undefined };
+  if (panel?.kind === 'about') return { kind: 'about' };
+  if (panel?.kind === 'pathway') return { kind: 'pathway', id: panel.id };
+  if (sel) return { kind: 'structure', id: sel };
+  return { kind: 'slice' };
+}
+
+/** The params every link carries: slice positions, a non-default contrast, the demo side, a non-default language. */
+export function paramsOf(s: AppState): RouteParams {
+  return { ax: s.slices.axial, cor: s.slices.coronal, sag: s.slices.sagittal, c: s.contrast !== 't1w' ? s.contrast : undefined,
+    side: s.syndrome && s.lesionSide ? s.lesionSide : undefined, lang: s.locale === 'en' ? undefined : s.locale };
+}
+
+/** The rest of the view, for a link that reproduces the scene exactly (camera, what is shown, slices, peels). */
+export function viewParams(s: AppState, cam: { position: { x: number; y: number; z: number }; target: { x: number; y: number; z: number } }): ViewParams {
+  const sl = AXES.filter((a) => s.slices.visible[a]).map((a) => a[0]).join('') || '-';
+  const peel = AXES.filter((a) => s.peel[a]).map((a) => a[0] + (s.peel[a] === 'positive' ? 'p' : 'n')).join(',');
+  return { cam: [cam.position.x, cam.position.y, cam.position.z, cam.target.x, cam.target.y, cam.target.z],
+    sys: [...s.visibleSystems], show: [...s.shownStructures], hide: [...s.hiddenStructures], sl, peel: peel || undefined, pin: s.slices.pinned || undefined };
 }
 
 /** Two-way binding: hashchange → handlers; store → location.hash (debounced, replaceState). */
 export function bindRouter(store: Store<AppState>, handlers: { onRoute(route: Route, params: RouteParams): void }): () => void {
   let applying = false;
-  const apply = () => { applying = true; try { const { route, params } = parseHash(location.hash); handlers.onRoute(route, params); } finally { applying = false; } };
-  window.addEventListener('hashchange', apply);
   let timer = 0;
+  // a navigation drops any rewrite still queued from the state before it, which would otherwise land on top of the new hash
+  const apply = () => { clearTimeout(timer); applying = true; try { const { route, params } = parseHash(location.hash); handlers.onRoute(route, params); } finally { applying = false; } };
+  window.addEventListener('hashchange', apply);
   const unsub = store.subscribe((s) => [s.selectedId ?? s.selectedStructureId, s.syndrome?.id ?? null, s.syndrome?.step ?? -1, s.slices.axial, s.slices.coronal, s.slices.sagittal, s.contrast, s.syndrome ? s.lesionSide : null, s.panel, s.locale] as const, (v) => {
     if (applying) return;
     clearTimeout(timer);
+    // `location.hash = x` changes the URL at once but delivers hashchange later; a rewrite that fires in
+    // between would put the old route back and the handler would then read that. So a rewrite only lands
+    // on the hash it was scheduled from.
+    const from = location.hash;
     timer = window.setTimeout(() => {
-      const [sel, syn, step, ax, cor, sag, c, side, panel, locale] = v;
-      const route: Route = syn ? { kind: 'syndrome', id: syn, step: step >= 0 ? step : undefined } : panel?.kind === 'quiz' ? { kind: 'quiz', index: panel.index } : panel?.kind === 'glossary' ? { kind: 'glossary', id: panel.id ?? undefined } : panel?.kind === 'topic' ? { kind: 'topic', id: panel.id ?? undefined } : panel?.kind === 'about' ? { kind: 'about' } : sel ? { kind: 'structure', id: sel } : { kind: 'slice' };
-      const hash = serialize(route, { ax, cor, sag, c: c !== 't1w' ? c : undefined, side: syn && side ? side : undefined, lang: locale === 'en' ? undefined : locale });
+      if (location.hash !== from) return;
+      const s = store.get();
+      const hash = serialize(routeOf(s), paramsOf(s));
       if (location.hash !== hash) history.replaceState(null, '', hash);
     }, 150);
   }, (a, b) => a.every((x, i) => x === b[i] || (i === 8 && JSON.stringify(x) === JSON.stringify(b[i]))));
