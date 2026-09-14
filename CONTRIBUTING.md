@@ -9,9 +9,11 @@ Code is Apache-2.0; the authored content in `content/` and the generated data in
 `public/data/` are CC BY-SA 4.0. By opening a pull request you agree that your
 contribution ships under those licences.
 
-Read [`README.md`](README.md) first — it explains what the atlas is, how the
-pipeline is put together and why the meshes are where they are. This file is
-about working on it. Security, licence and redistribution reports go to
+Read [`README.md`](README.md) and the [user guide](docs/guide.md) first — they
+explain what the atlas is and does; [`docs/pipeline.md`](docs/pipeline.md) and
+[`docs/editions.md`](docs/editions.md) explain how the data is built and why the
+meshes are where they are. This file is about working on it; [`AGENTS.md`](AGENTS.md)
+is the operating manual with the traps that cost time. Security, licence and redistribution reports go to
 [`SECURITY.md`](SECURITY.md).
 
 ---
@@ -30,32 +32,30 @@ about working on it. Security, licence and redistribution reports go to
 
 **A fresh clone has no `public/data/`.** Meshes, MRI volumes, label tables and
 `manifest.json` are built by the pipeline from downloaded source atlases and are
-gitignored, because they are large and fully regenerable. The app will not boot
-without them: `manifest.json` 404s and the scene never loads.
+gitignored, because they are large and fully regenerable. `npm start` fetches the
+released bundle (49 MB, checksum-pinned) the first time and serves the app; `npm run
+data` fetches without serving. Without the data the app boots to a message saying so.
 
 What *does* work in a bare clone, straight after `npm ci`: `npm run typecheck`,
 `npm run content:validate`, `npm run citations:check`, `npm run notice --
---check`, `npm run build`, six of the eight unit test files (five pass, one skips itself),
-and `python3 tools/i18n/prose.py check`. That is exactly the set the CI workflow
-runs. The two remaining test files — `tests/public-edition.test.ts` and
-`tests/spine-lut.test.ts` — read `public/data/` when they are imported, so plain
-`npm test` fails without the data. Everything else needs it too.
+--check`, `npm run build`, the unit test files that do not read the data (the
+others skip themselves), and `python3 tools/i18n/prose.py check`. That is exactly
+the set the CI workflow's `node` job runs; its `integration` job then fetches the
+released bundle and runs the browser tests on it.
 
-To build it:
+To build the data yourself — only needed to change how the meshes or volumes
+are made:
 
 ```bash
-cd pipeline && uv sync && cd ..
-uv run --project pipeline atlas-build     # download → volumes → register → meshes → labels → manifest → QA
-node scripts/check-data.ts                # integrity check over what was produced
-npm run content                           # bundle content/ into public/data/content.json
-npm run dev                               # http://localhost:5173
+npm run data:build     # uv sync → atlas-build (download → volumes → register → meshes → labels → manifest → QA) → check-data → content
+npm start
 ```
 
 This downloads several GB and takes a while. Individual steps and the optional
 extras (Z-Anatomy, the public-edition cord MRI, the manually downloaded
-Brainstem Navigator toolkit) are documented under *Running the app* in the
-README. If you only want to work on text, you can skip the pipeline entirely and
-use the content checks — they do not need the data.
+Brainstem Navigator toolkit) are documented in [`docs/pipeline.md`](docs/pipeline.md).
+If you only want to work on text, you can skip the pipeline entirely and use the
+content checks — they do not need the data.
 
 ## The two branches
 
@@ -238,25 +238,35 @@ reviewer's and survives regeneration). `fetch` needs the cache under
 
 ## Checks
 
-The full local suite, in order. Copy-paste it:
+One command runs the whole suite, in the order the release checklist uses, and
+skips what the machine cannot run (no `public/data/`, no `uv`, no Playwright
+chromium), saying so in the summary:
+
+```bash
+npm run check              # everything; about ten minutes with the browser tests
+npm run check -- --quick   # without the build and the browser tests; about a minute
+```
+
+What it runs, if you want one step on its own:
 
 ```bash
 npm run check-tree                                # no restricted/private/generated files committed
 npm run typecheck
 npm test                                          # vitest
 npm run content:validate
-npm run citations:check
-node scripts/check-data.ts                        # needs public/data/
+npm run citations:check                           # also the counts README.md and docs/ quote (--fix rewrites them)
+node scripts/check-data.ts                        # needs public/data/ (--all: both manifests)
 npm run notice -- --check                         # NOTICE is generated; never edit it by hand
 uv run --project pipeline atlas-qa                # pipeline data gates; needs pipeline/work/
-npx playwright install chromium && npm run e2e    # browser smoke tests against the dev server
+npx playwright install chromium && npm run e2e    # browser tests against the dev server
 npm run build                                     # builds dist/ and runs the redistribution gate over it
 python3 tools/i18n/prose.py check                 # Turkish overlays against the English entries
 ```
 
 `.github/workflows/checks.yml` runs the subset that works without
-`public/data/`. Everything else is on you locally — including, importantly,
-`npm run build` and `node scripts/check-data.ts`.
+`public/data/`, then the browser tests on the last released bundle. The build
+gate over data that is not yet released, `check-data` and `atlas-qa` are on you
+locally.
 
 ## Commit messages
 

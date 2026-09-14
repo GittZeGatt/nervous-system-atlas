@@ -50,8 +50,21 @@ same tree, so a change to any one of the three can move the version.
 - **The counts the docs quote are checked.** `citations:check` compares the citation, source and entry counts
   in README.md and docs/content.md with the live ones and fails on drift; `--fix` rewrites them. (They had
   drifted: 2384 citations across 824 entries, not 2387 across 825.)
+- **One command each for running, checking and building.** `npm start` installs what is missing, fetches
+  the data bundle once and serves the app; `npm run check` runs the whole check suite in order, skips what the
+  machine cannot run and prints a summary (`--quick` leaves out the build and the browser tests);
+  `npm run data:build` runs the pipeline end to end. The in-app "no data" message now says `npm start`.
 - **Keyboard access.** The search box is a combobox over a listbox (arrow keys move `aria-activedescendant`,
   Enter takes the result) and a pathway's steps are buttons, reachable with Tab.
+
+### Changed
+
+- **The documentation is split by reader.** The README is for someone who wants the atlas running: a
+  three-line quick start, what it looks like, what is in it, licences, and where to go next — in English and
+  Turkish, a third of its former length. Everything it used to explain in full moved to a user guide
+  (`docs/guide.md`, `docs/guide.tr.md`): features, keyboard shortcuts, links and Share view, adding your own
+  MRI, the two editions, content and citations, the Turkish edition, limitations and roadmap. Contributors have
+  CONTRIBUTING.md and AGENTS.md; the pipeline has docs/pipeline.md and docs/editions.md.
 
 ### Fixed
 

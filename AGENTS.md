@@ -4,22 +4,23 @@ A browser-based 3D atlas of clinical neuroanatomy: meshes in MNI152 space, synch
 authored clinical content in English and Turkish. Vite + TypeScript + three.js in `src/`, a Python pipeline in
 `pipeline/`, and the prose as JSON in `content/`.
 
-This file is for anyone — human or agent — setting the project up or changing it. [README.md](README.md) is the
-tour; this is the operating manual. The traps below are the ones that actually cost time.
+This file is for anyone — human or agent — setting the project up or changing it. [README.md](README.md) gets
+a reader running, [docs/guide.md](docs/guide.md) is the tour of what the app does, [CONTRIBUTING.md](CONTRIBUTING.md)
+the rules for changing it; this is the operating manual. The traps below are the ones that actually cost time.
 
 ## Setting up
 
 ```bash
-npm ci
-npm run data           # 48 MB from the v1.0.2 release into public/data/, SHA-256 checked
-npm run dev            # http://localhost:5173
+npm start              # npm ci if needed, then the 49 MB v1.0.2 bundle into public/data/ (SHA-256 checked), then http://localhost:5173
 ```
+
+`npm run data` fetches without serving; `npm run dev` serves without fetching.
 
 **The atlas data is not in this repository and must never be committed.** `public/data/` is 63 MB of generated
 meshes, MRI volumes and label tables; it is gitignored, and `npm run check-tree` fails if it is ever tracked.
 Skip `npm run data` and the app starts and tells you what to run — it does not hang or throw.
 
-To generate the data instead of downloading it, see [docs/pipeline.md](docs/pipeline.md). It needs `uv`,
+To generate the data instead of downloading it, `npm run data:build` (see [docs/pipeline.md](docs/pipeline.md)). It needs `uv`,
 downloads several GB, and takes a long time. You almost never need it: reach for it only when changing how the
 meshes or volumes are built.
 
@@ -67,6 +68,9 @@ only where restricted data was built. So a plain `npm run dev` or `npm run build
 | `npm run dev:private` / `npm run build:private` | full edition (`dist-private/`), ungated, do not publish |
 
 ## Checks
+
+`npm run check` runs all of the below in order and skips what the machine lacks (`--quick` leaves out the build
+and the browser tests). One at a time:
 
 ```bash
 npm run check-tree                                # nothing private, restricted or generated is committed
