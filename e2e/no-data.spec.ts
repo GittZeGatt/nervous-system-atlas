@@ -1,5 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 
+// CI runs on a GPU-less runner where WebGL is software-rendered and everything is several times slower
+const SLOW = process.env['CI'] ? 4 : 1;
+
 // The fresh-clone path: someone clones the repository, runs `npm run dev` and has no public/data/ yet.
 // The app must say so instead of dying on a parse error, and it must recognise BOTH shapes the miss can take:
 // a real 404 from a built site or `vite preview`, and the 200-with-index.html that a dev server's SPA fallback
@@ -12,7 +15,7 @@ const FALLBACK_HTML = '<!doctype html><html><head><title>Clinical Neuroanatomy A
 
 async function expectNoDataMessage(page: Page): Promise<void> {
   const panel = page.locator('[data-testid="no-data"]');
-  await expect(panel).toBeVisible({ timeout: 30_000 });
+  await expect(panel).toBeVisible({ timeout: 30_000 * SLOW });
   await expect(panel).toContainText('No atlas data found');
   await expect(panel.locator('code')).toHaveText('npm run data');
   await expect(panel.locator('a')).toHaveAttribute('href', /docs\/pipeline\.md$/);
@@ -39,7 +42,7 @@ test('the setup message is translated', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('atlas.locale', 'tr'));
   await page.goto('/');
   const panel = page.locator('[data-testid="no-data"]');
-  await expect(panel).toBeVisible({ timeout: 30_000 });
+  await expect(panel).toBeVisible({ timeout: 30_000 * SLOW });
   await expect(panel).toContainText('Atlas verisi bulunamadı');
   await expect(panel.locator('code')).toHaveText('npm run data');
 });
@@ -48,6 +51,6 @@ test('a manifest that is present but corrupt still reports the generic failure',
   await page.route('**/data/manifest.json', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: '{"schema":99}' }));
   await page.goto('/');
-  await expect(page.locator('#overlay-msg')).toContainText('unexpected schema', { timeout: 30_000 });
+  await expect(page.locator('#overlay-msg')).toContainText('unexpected schema', { timeout: 30_000 * SLOW });
   await expect(page.locator('[data-testid="no-data"]')).toHaveCount(0);
 });

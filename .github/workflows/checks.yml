@@ -109,13 +109,16 @@ jobs:
 
   # The smoke suite needs public/data/. `npm run data` fetches the release bundle that check-public certified
   # (pinned SHA-256, 47 MB), so this job exercises the app against real data: teaching-mode exit, Mirror, a
-  # slower selection, links that survive slice moves and reloads, the share link. It takes about ten minutes,
-  # so it runs on pushes and on demand rather than on every pull request. The bundle is the last release's,
+  # slower selection, links that survive slice moves and reloads, the share link. It takes 20–30 minutes
+  # (no GPU, so WebGL is software-rendered), so it runs on pushes and on demand rather than on every pull
+  # request; the specs scale their timeouts by 4 when CI is set. The bundle is the last release's,
   # not this commit's: a change to the pipeline is only covered once its data has been released.
   integration:
     name: smoke tests on the pinned public bundle
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
+    # software WebGL: the suite that takes 7 minutes on a laptop took 22 here
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 

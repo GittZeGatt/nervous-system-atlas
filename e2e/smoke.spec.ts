@@ -1,19 +1,22 @@
 import { test, expect, type Page } from '@playwright/test';
 
+// CI runs on a GPU-less runner where WebGL is software-rendered and everything is several times slower
+const SLOW = process.env['CI'] ? 4 : 1;
+
 // Smoke tests against the dev server (npm run dev). Run: npx playwright install chromium && npm run e2e
 const errors: string[] = [];
 async function boot(page: Page, hash = ''): Promise<void> {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`/${hash}`);
-  await page.waitForFunction(() => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true, null, { timeout: 60_000 });
+  await page.waitForFunction(() => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true, null, { timeout: 60_000 * SLOW });
 }
 const atlas = (page: Page) => page.evaluate(() => { const a = (window as unknown as { atlas: { store: { get(): Record<string, unknown> }; manifest: { meshes: unknown[] }; registry: { loaded(): Iterable<unknown> } } }).atlas; const st = a.store.get(); return { state: st, involved: [...(st['involved'] as Set<string>)], meshes: a.manifest.meshes.length, loaded: [...a.registry.loaded()].length }; });
 
 test('loads without console errors and renders meshes', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(180_000 * SLOW);
   await boot(page);
-  await page.waitForFunction(() => [...(window as unknown as { atlas: { registry: { loaded(): Iterable<unknown> } } }).atlas.registry.loaded()].length > 20, null, { timeout: 120_000 });
+  await page.waitForFunction(() => [...(window as unknown as { atlas: { registry: { loaded(): Iterable<unknown> } } }).atlas.registry.loaded()].length > 20, null, { timeout: 120_000 * SLOW });
   const a = await atlas(page);
   expect(a.meshes).toBeGreaterThan(400);
   expect(errors.filter((e) => !/favicon/.test(e))).toEqual([]);
@@ -23,19 +26,19 @@ test('selecting from the tree updates the content panel and the hash', async ({ 
   await boot(page);
   await page.fill('.tree-filter', 'putamen');
   await page.locator('#left').getByText('Putamen', { exact: false }).first().click();
-  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/Putamen/i, { timeout: 20_000 });
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/Putamen/i, { timeout: 20_000 * SLOW });
   await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/#\/structure\/putamen/);
 });
 
 test('syndrome route dims the scene, marks involved meshes and steps deficits', async ({ page }) => {
   await boot(page, '#/syndrome/syn-wallenberg-lateral-medullary?step=1');
-  await expect(page.locator('#syndrome-bar')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#syndrome-bar')).toBeVisible({ timeout: 30_000 * SLOW });
   await expect(page.locator('#syndrome-bar')).toContainText('Wallenberg');
   const a = await atlas(page);
   expect((a.state['syndrome'] as { step: number }).step).toBe(1);
   expect(a.involved.length).toBeGreaterThan(0);
   await page.keyboard.press('Escape');
-  await expect(page.locator('#syndrome-bar')).toBeHidden({ timeout: 30_000 });
+  await expect(page.locator('#syndrome-bar')).toBeHidden({ timeout: 30_000 * SLOW });
 });
 
 test('quiz answers and glossary render', async ({ page }) => {
@@ -48,9 +51,9 @@ test('quiz answers and glossary render', async ({ page }) => {
 });
 
 test('real mouse input: click selects, drag orbits, nothing hidden covers the canvas', async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(120_000 * SLOW);
   await boot(page);
-  await page.waitForFunction(() => [...(window as unknown as { atlas: { registry: { loaded(): Iterable<unknown> } } }).atlas.registry.loaded()].length > 100, null, { timeout: 90_000 });
+  await page.waitForFunction(() => [...(window as unknown as { atlas: { registry: { loaded(): Iterable<unknown> } } }).atlas.registry.loaded()].length > 100, null, { timeout: 90_000 * SLOW });
   const box = (await page.locator('#gl').boundingBox())!;
   const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
   // no [hidden] element may still be laid out (that was the bug: overlays with display:flex swallowed pointer events)
@@ -61,11 +64,11 @@ test('real mouse input: click selects, drag orbits, nothing hidden covers the ca
   }, [cx, cy]);
   expect(covering).toEqual({ center: 'gl', bad: [] });
   await page.mouse.click(cx, cy);
-  await expect.poll(() => page.evaluate(() => (window as unknown as { atlas: { store: { get(): { selectedId: string | null } } } }).atlas.store.get().selectedId), { timeout: 10_000 }).not.toBeNull();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { atlas: { store: { get(): { selectedId: string | null } } } }).atlas.store.get().selectedId), { timeout: 10_000 * SLOW }).not.toBeNull();
   const before = await page.evaluate(() => (window as unknown as { atlas: { sm: { camera: { position: { toArray(): number[] } } } } }).atlas.sm.camera.position.toArray());
   await page.mouse.move(cx - 80, cy);
   await page.mouse.down();
-  for (let i = 1; i <= 10; i++) await page.mouse.move(cx - 80 + i * 16, cy + i * 4);
+  for (let i = 1; i <= 6; i++) await page.mouse.move(cx - 80 + i * 16, cy + i * 4);
   await page.mouse.up();
   await page.waitForTimeout(600);
   const after = await page.evaluate(() => (window as unknown as { atlas: { sm: { camera: { position: { toArray(): number[] } } } } }).atlas.sm.camera.position.toArray());
@@ -78,11 +81,11 @@ test('real mouse input: click selects, drag orbits, nothing hidden covers the ca
 
 test('topic route spotlights its meshes and selecting a structure returns to the structure panel', async ({ page }) => {
   await boot(page, '#/topic/topic-epilepsy-localization');
-  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/Epilepsy/i, { timeout: 30_000 });
-  await expect.poll(() => page.evaluate(() => [...(window as unknown as { atlas: { store: { get(): { involved: Set<string> } } } }).atlas.store.get().involved].length), { timeout: 30_000 }).toBeGreaterThan(3);
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/Epilepsy/i, { timeout: 30_000 * SLOW });
+  await expect.poll(() => page.evaluate(() => [...(window as unknown as { atlas: { store: { get(): { involved: Set<string> } } } }).atlas.store.get().involved].length), { timeout: 30_000 * SLOW }).toBeGreaterThan(3);
   await page.fill('.tree-filter', 'putamen');
   await page.locator('#left').getByText('Putamen', { exact: false }).first().click();
-  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/Putamen/i, { timeout: 20_000 });
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/Putamen/i, { timeout: 20_000 * SLOW });
   await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/#\/structure\/putamen/);
 });
 
@@ -90,7 +93,7 @@ test('the sources tab lists open-access citations that link to free full text', 
   await boot(page, '#/structure/putamen');
   await page.locator('#right .tabs button', { hasText: 'Sources' }).click();
   const link = page.locator('#right .section .cite a').first();
-  await expect(link).toBeVisible({ timeout: 20_000 });
+  await expect(link).toBeVisible({ timeout: 20_000 * SLOW });
   await expect(link).toHaveAttribute('target', '_blank');
   await expect(link).toHaveAttribute('href', /^https:\/\/(www\.ncbi\.nlm\.nih\.gov\/books\/NBK|pmc\.ncbi\.nlm\.nih\.gov\/articles\/PMC)/);
   await expect(page.locator('#right .section')).not.toContainText(/Snell|Berkowitz/i);
@@ -118,9 +121,9 @@ const sceneVisible = (page: Page) => page.evaluate(() => {
 });
 
 test('tree groups: a subsystem checkbox shows/hides all of its meshes, tri-state and all', async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(120_000 * SLOW);
   await boot(page);
-  await page.waitForFunction(() => [...(window as unknown as { atlas: { registry: { loaded(): Iterable<unknown> } } }).atlas.registry.loaded()].length > 20, null, { timeout: 90_000 });
+  await page.waitForFunction(() => [...(window as unknown as { atlas: { registry: { loaded(): Iterable<unknown> } } }).atlas.registry.loaded()].length > 20, null, { timeout: 90_000 * SLOW });
   await page.locator('.tree-sys .name', { hasText: 'Cerebrum' }).first().click();
   const sub = page.locator('.tree-sub').first();
   const key = (await sub.getAttribute('data-group'))!;
@@ -130,25 +133,25 @@ test('tree groups: a subsystem checkbox shows/hides all of its meshes, tri-state
   expect(total).toBeGreaterThan(0);
   // tick → every mesh in the group is on (even the ones the manifest hides by default)
   await box.click();
-  await expect.poll(() => groupVisible(page, key).then((g) => g.visible), { timeout: 30_000 }).toBe(total);
+  await expect.poll(() => groupVisible(page, key).then((g) => g.visible), { timeout: 30_000 * SLOW }).toBe(total);
   expect(await box.isChecked()).toBe(true);
   expect(await box.evaluate((e: HTMLInputElement) => e.indeterminate)).toBe(false);
   // untick → all of them off
   await box.click();
-  await expect.poll(() => groupVisible(page, key).then((g) => g.visible), { timeout: 30_000 }).toBe(0);
+  await expect.poll(() => groupVisible(page, key).then((g) => g.visible), { timeout: 30_000 * SLOW }).toBe(0);
   expect(await box.isChecked()).toBe(false);
   // a single structure back on inside the group → the group box goes indeterminate
   await page.locator(`.tree-sub[data-group="${key}"]`).click();          // expand it
   await page.locator('.tree-row input[type=checkbox]').first().click();
-  await expect.poll(() => page.locator(`.tree-sub[data-group="${key}"] input`).evaluate((e: HTMLInputElement) => e.indeterminate), { timeout: 20_000 }).toBe(true);
+  await expect.poll(() => page.locator(`.tree-sub[data-group="${key}"] input`).evaluate((e: HTMLInputElement) => e.indeterminate), { timeout: 20_000 * SLOW }).toBe(true);
 });
 
 test('tree master switch turns every structure on and off, and Defaults restores the start view', async ({ page }) => {
   // "all on" pulls every one of the ~660 meshes in, which saturates the main thread under the
   // software renderer a headless run uses — hence the roomy budget; the store itself changes synchronously.
-  test.setTimeout(420_000);
+  test.setTimeout(420_000 * SLOW);
   await boot(page);
-  await page.waitForFunction(() => [...(window as unknown as { atlas: { registry: { loaded(): Iterable<unknown> } } }).atlas.registry.loaded()].length > 20, null, { timeout: 90_000 });
+  await page.waitForFunction(() => [...(window as unknown as { atlas: { registry: { loaded(): Iterable<unknown> } } }).atlas.registry.loaded()].length > 20, null, { timeout: 90_000 * SLOW });
   const before = await sceneVisible(page);
   expect(before).toBeGreaterThan(0);
   // first click: everything on (all systems, every mesh forced visible)
@@ -156,28 +159,28 @@ test('tree master switch turns every structure on and off, and Defaults restores
   await expect.poll(() => page.evaluate(() => {
     const a = (window as unknown as TreeWin).atlas; const s = a.store.get();
     return s.visibleSystems.size === a.manifest.systems.length && s.shownStructures.size === a.manifest.meshes.length && s.hiddenStructures.size === 0;
-  }), { timeout: 90_000 }).toBe(true);
+  }), { timeout: 90_000 * SLOW }).toBe(true);
   // let the ~660 meshes finish arriving: while they decode, the main thread starves input and the
   // next click can sit in the queue for a long time
   await page.waitForFunction(() => {
     const a = (window as unknown as TreeWin).atlas;
     return [...a.registry.loaded()].length === a.manifest.meshes.length;
-  }, null, { timeout: 240_000 });
+  }, null, { timeout: 240_000 * SLOW });
   await expect(page.locator('.master-box')).toBeChecked();
   // second click: nothing at all
   await page.locator('.master-box').click();
   await expect.poll(() => page.evaluate(() => {
     const s = (window as unknown as TreeWin).atlas.store.get();
     return s.visibleSystems.size + s.shownStructures.size + s.hiddenStructures.size;
-  }), { timeout: 60_000 }).toBe(0);
-  await expect.poll(() => sceneVisible(page), { timeout: 60_000 }).toBe(0);
+  }), { timeout: 60_000 * SLOW }).toBe(0);
+  await expect.poll(() => sceneVisible(page), { timeout: 60_000 * SLOW }).toBe(0);
   // Defaults: back to the manifest's own view (more meshes have finished loading by now, so
   // compare the state rather than a count taken while the scene was still filling in)
   await page.locator('.tree-master button').click();
   await expect.poll(() => page.evaluate(() => {
     const a = (window as unknown as TreeWin).atlas; const s = a.store.get();
     return { shown: s.shownStructures.size, hidden: s.hiddenStructures.size, systems: s.visibleSystems.size };
-  }), { timeout: 60_000 }).toEqual({ shown: 0, hidden: 0, systems: (await page.evaluate(() => (window as unknown as { atlas: { manifest: { systems: { defaultVisible?: boolean }[] } } }).atlas.manifest.systems.filter((x) => x.defaultVisible).length)) });
+  }), { timeout: 60_000 * SLOW }).toEqual({ shown: 0, hidden: 0, systems: (await page.evaluate(() => (window as unknown as { atlas: { manifest: { systems: { defaultVisible?: boolean }[] } } }).atlas.manifest.systems.filter((x) => x.defaultVisible).length)) });
   const after = await sceneVisible(page);
   expect(after).toBeGreaterThanOrEqual(before);
   expect(after).toBeLessThan(await page.evaluate(() => (window as unknown as TreeWin).atlas.manifest.meshes.length));
@@ -188,9 +191,9 @@ type PerfWin = { atlas: { picker: { picks: number }; sm: { renders: number } } }
 const counters = (page: Page) => page.evaluate(() => ({ picks: (window as unknown as PerfWin).atlas.picker.picks, renders: (window as unknown as PerfWin).atlas.sm.renders }));
 
 test('interaction budget: a drag runs no hover raycasts, the view settles and the loop idles', async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(300_000 * SLOW);
   await boot(page);
-  await page.waitForFunction(() => [...(window as unknown as { atlas: { registry: { loaded(): Iterable<unknown> } } }).atlas.registry.loaded()].length > 100, null, { timeout: 120_000 });
+  await page.waitForFunction(() => [...(window as unknown as { atlas: { registry: { loaded(): Iterable<unknown> } } }).atlas.registry.loaded()].length > 100, null, { timeout: 120_000 * SLOW });
   await page.waitForTimeout(3000);
   const box = (await page.locator('#gl').boundingBox())!;
   const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
@@ -230,7 +233,8 @@ test('interaction budget: a drag runs no hover raycasts, the view settles and th
 // ---- PAM50 spinal levels on the cord slices ------------------------------------
 type SpineWin = { atlas: {
   store: { get(): { loaded: { cord: boolean }; selectedId: string | null; cordLevel: number | null }; set(p: Record<string, unknown>): void };
-  spine: { byId: Map<number, { name: string; meshId: string; region: string }> } | null;
+  spine: { byId: Map<number, { name: string; meshId: string; region: string }>; vol: { dims: [number, number, number]; data: ArrayLike<number> } } | null;
+  cordGrid: { affine: { elements: number[] } } | null;
   uniforms: { uHasSpine: { value: number }; uSpineSel: { value: number }; uSpineHover: { value: number } };
   sm: { camera: { fov: number; up: { set(x: number, y: number, z: number): void }; near: number; far: number; updateProjectionMatrix(): void };
         controls: { target: { set(x: number, y: number, z: number): void }; update(): void };
@@ -253,42 +257,44 @@ async function lookDownCord(page: Page, at: { x: number; y: number; z: number },
 }
 
 test('cord slices: the spinal level under the cursor is named, and clicking it selects the cord segment', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(180_000 * SLOW);
   const errorsBefore = errors.length;
   await boot(page);
-  await page.waitForFunction(() => (window as unknown as { atlas: { store: { get(): { loaded: { volume: boolean } } } } }).atlas.store.get().loaded.volume === true, null, { timeout: 120_000 });
-  // the C5 segment on our own centreline, as atlas-pam50 measured it
-  const c5 = await page.evaluate(async () => {
-    // whichever cord template this edition ships: PAM50 privately, the composed open one publicly. The
-    // manifest names its LUT, and the measured level geometry is that LUT's sibling file.
-    const man = (await (await fetch('data/manifest.json')).json()) as { volumes: Record<string, { lut?: string }> };
-    const pub = (man.volumes['labels_spine']?.lut ?? '').includes('_public');
-    const r = await fetch(`data/volumes/cord_levels${pub ? '_public' : ''}.json`);
-    const j = (await r.json()) as { spinalLevels: { name: string; top: number[]; bottom: number[] }[] };
-    const l = j.spinalLevels.find((x) => x.name === 'C5')!;
-    return { x: (l.top[0]! + l.bottom[0]!) / 2, y: (l.top[1]! + l.bottom[1]!) / 2, z: (l.top[2]! + l.bottom[2]!) / 2 };
-  });
-  expect(c5.z).toBeLessThan(-110);
-  // cord MRI on, only the axial slice, no meshes at all so the raycast can only land on the slice plane
-  await page.evaluate((c5) => {
+  await page.waitForFunction(() => (window as unknown as { atlas: { store: { get(): { loaded: { volume: boolean } } } } }).atlas.store.get().loaded.volume === true, null, { timeout: 120_000 * SLOW });
+  // cord MRI on, no meshes at all so the raycast can only land on the slice plane
+  await page.evaluate(() => {
     const a = (window as unknown as SpineWin).atlas;
     a.store.set({ cordMri: true, contrast: 't2w', visibleSystems: new Set(), shownStructures: new Set(), hiddenStructures: new Set(),
-      overlay: { opacity: 0.75, showAllLabels: true, territory: false, tracts: false },
-      slices: { axial: Math.round(c5.z), coronal: Math.round(c5.y), sagittal: Math.round(c5.x), visible: { axial: true, coronal: false, sagittal: false }, pinned: true } });
-  }, c5);
-  await page.waitForFunction(() => (window as unknown as SpineWin).atlas.store.get().loaded.cord === true, null, { timeout: 120_000 });
-  await page.waitForFunction(() => (window as unknown as SpineWin).atlas.spine !== null, null, { timeout: 60_000 });
+      overlay: { opacity: 0.75, showAllLabels: true, territory: false, tracts: false } });
+  });
+  await page.waitForFunction(() => (window as unknown as SpineWin).atlas.store.get().loaded.cord === true, null, { timeout: 120_000 * SLOW });
+  await page.waitForFunction(() => (window as unknown as SpineWin).atlas.spine !== null, null, { timeout: 60_000 * SLOW });
   // the level volume and its LUT reached the shader
   expect(await page.evaluate(() => (window as unknown as SpineWin).atlas.uniforms.uHasSpine.value)).toBe(1);
   expect(await page.evaluate(() => (window as unknown as SpineWin).atlas.spine!.byId.size)).toBe(30);
-
+  // the centre of a level, in mm, from the level volume the app loaded — whichever cord template this edition
+  // ships (PAM50 privately, the composed open one publicly); the released bundle carries no other level geometry
+  const centre = (name: string) => page.evaluate((name) => {
+    const a = (window as unknown as SpineWin).atlas;
+    const id = [...a.spine!.byId].find(([, e]) => e.name === name)![0];
+    const { dims, data } = a.spine!.vol; const e = a.cordGrid!.affine.elements;
+    let n = 0, si = 0, sj = 0, sk = 0;
+    for (let k = 0; k < dims[2]; k++) for (let j = 0; j < dims[1]; j++) { const row = dims[0] * (j + dims[1] * k); for (let i = 0; i < dims[0]; i++) if (data[row + i] === id) { n++; si += i; sj += j; sk += k; } }
+    const i = si / n, j = sj / n, k = sk / n;
+    return { x: e[0]! * i + e[4]! * j + e[8]! * k + e[12]!, y: e[1]! * i + e[5]! * j + e[9]! * k + e[13]!, z: e[2]! * i + e[6]! * j + e[10]! * k + e[14]! };
+  }, name);
+  const c5 = await centre('C5');
+  expect(c5.z).toBeLessThan(-110);
+  await page.evaluate((c5) => {
+    (window as unknown as SpineWin).atlas.store.set({ slices: { axial: Math.round(c5.z), coronal: Math.round(c5.y), sagittal: Math.round(c5.x), visible: { axial: true, coronal: false, sagittal: false }, pinned: true } });
+  }, c5);
   await lookDownCord(page, c5);
   const box = (await page.locator('#gl').boundingBox())!;
   const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
   await page.mouse.move(cx - 30, cy - 30);
   await page.mouse.move(cx, cy);
   // hovering the cord slice names the level in the MNI readout and lights that level up on the slice
-  await expect.poll(() => page.locator('.hud').textContent(), { timeout: 30_000 }).toMatch(/C5 · cervical segment/);
+  await expect.poll(() => page.locator('.hud').textContent(), { timeout: 30_000 * SLOW }).toMatch(/C5 · cervical segment/);
   expect(await page.evaluate(() => (window as unknown as SpineWin).atlas.store.get().cordLevel)).toBe(5);
   expect(await page.evaluate(() => (window as unknown as SpineWin).atlas.uniforms.uSpineHover.value)).toBe(1 << 5);
 
@@ -297,18 +303,11 @@ test('cord slices: the spinal level under the cursor is named, and clicking it s
   // the cord segment the LUT itself names for this level (spinal-segment-cervical privately, its
   // vertebral-landmark counterpart in the public edition)
   const segmentOf = (id: number) => page.evaluate((n) => (window as unknown as SpineWin).atlas.spine!.byId.get(n)!.meshId, id);
-  await expect.poll(() => page.evaluate(() => (window as unknown as SpineWin).atlas.store.get().selectedId), { timeout: 20_000 }).toBe(await segmentOf(5));
+  await expect.poll(() => page.evaluate(() => (window as unknown as SpineWin).atlas.store.get().selectedId), { timeout: 20_000 * SLOW }).toBe(await segmentOf(5));
   expect(await page.evaluate(() => (window as unknown as SpineWin).atlas.uniforms.uSpineSel.value)).toBe(0b111111110);
 
   // one level lower down the cord the readout follows the level, not the click
-  const t10 = await page.evaluate(async () => {
-    const man = (await (await fetch('data/manifest.json')).json()) as { volumes: Record<string, { lut?: string }> };
-    const pub = (man.volumes['labels_spine']?.lut ?? '').includes('_public');
-    const r = await fetch(`data/volumes/cord_levels${pub ? '_public' : ''}.json`);
-    const j = (await r.json()) as { spinalLevels: { name: string; top: number[]; bottom: number[] }[] };
-    const l = j.spinalLevels.find((x) => x.name === 'T10')!;
-    return { x: (l.top[0]! + l.bottom[0]!) / 2, y: (l.top[1]! + l.bottom[1]!) / 2, z: (l.top[2]! + l.bottom[2]!) / 2 };
-  });
+  const t10 = await centre('T10');
   await page.evaluate((t10) => {
     const a = (window as unknown as SpineWin).atlas;
     a.store.set({ slices: { axial: Math.round(t10.z), coronal: Math.round(t10.y), sagittal: Math.round(t10.x), visible: { axial: true, coronal: false, sagittal: false }, pinned: true } });
@@ -316,9 +315,9 @@ test('cord slices: the spinal level under the cursor is named, and clicking it s
   await lookDownCord(page, t10);
   await page.mouse.move(cx - 30, cy - 30);
   await page.mouse.move(cx, cy);
-  await expect.poll(() => page.locator('.hud').textContent(), { timeout: 30_000 }).toMatch(/T10 · thoracic segment/);
+  await expect.poll(() => page.locator('.hud').textContent(), { timeout: 30_000 * SLOW }).toMatch(/T10 · thoracic segment/);
   await page.mouse.click(cx, cy);
-  await expect.poll(() => page.evaluate(() => (window as unknown as SpineWin).atlas.store.get().selectedId), { timeout: 20_000 }).toBe(await segmentOf(18));
+  await expect.poll(() => page.evaluate(() => (window as unknown as SpineWin).atlas.store.get().selectedId), { timeout: 20_000 * SLOW }).toBe(await segmentOf(18));
   expect(errors.slice(errorsBefore).filter((e) => !/favicon/.test(e))).toEqual([]);
 });
 
@@ -351,12 +350,12 @@ const auditAbout = (page: Page) => page.evaluate(() => {
 });
 
 test('the About panel credits every data source in the manifest, each with a licence link', async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(240_000 * SLOW);
   const errorsBefore = errors.length;
   await boot(page, '#/about');
   const panel = page.locator('#right .content:not([hidden])');
-  await expect(panel.locator('h2').first()).toContainText('About and credits', { timeout: 60_000 });
-  await expect.poll(() => auditAbout(page).then((a) => a.rows.length), { timeout: 30_000 }).toBeGreaterThan(5);
+  await expect(panel.locator('h2').first()).toContainText('About and credits', { timeout: 60_000 * SLOW });
+  await expect.poll(() => auditAbout(page).then((a) => a.rows.length), { timeout: 30_000 * SLOW }).toBeGreaterThan(5);
 
   const a = await auditAbout(page);
   // one row per manifest source, with the same ids
@@ -385,18 +384,18 @@ test('the About panel credits every data source in the manifest, each with a lic
   // the verbatim licence text really loads out of public/data/licenses/
   const cc = panel.locator('.licence-details', { hasText: 'Attribution-ShareAlike 4.0' }).first();
   await cc.locator('summary').click();
-  await expect(cc.locator('.licence-text')).toContainText(/Creative Commons/i, { timeout: 30_000 });
+  await expect(cc.locator('.licence-text')).toContainText(/Creative Commons/i, { timeout: 30_000 * SLOW });
   await page.screenshot({ path: 'qa/shots/about/about-licence-text.png' });
   expect(errors.slice(errorsBefore).filter((e) => !/favicon/.test(e))).toEqual([]);
 });
 
 test('every structure panel shows a Source line that opens the credits', async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(240_000 * SLOW);
   await boot(page, '#/structure/putamen');
   const panel = page.locator('#right .content:not([hidden])');
-  await expect(panel.locator('h2').first()).toContainText(/Putamen/i, { timeout: 60_000 });
+  await expect(panel.locator('h2').first()).toContainText(/Putamen/i, { timeout: 60_000 * SLOW });
   const line = panel.locator('.source-line').first();
-  await expect(line).toContainText('Source:', { timeout: 30_000 });
+  await expect(line).toContainText('Source:', { timeout: 30_000 * SLOW });
   await expect(line.locator('a.src-credit').first()).toHaveAttribute('href', '#/about');
   await expect(line.locator('.src-lic').first()).toContainText(/\(.+\)/);
   await page.screenshot({ path: 'qa/shots/about/structure-source-line.png' });
@@ -406,39 +405,39 @@ test('every structure panel shows a Source line that opens the credits', async (
 
   // a derived mesh says so, with the construction method in the tooltip
   await hash('#/structure/nerve-phrenic');
-  await expect.poll(sourceText, { timeout: 60_000 }).toMatch(/Source:.*derived:/s);
+  await expect.poll(sourceText, { timeout: 60_000 * SLOW }).toMatch(/Source:.*derived:/s);
   expect((await page.getAttribute('#right .content:not([hidden]) .derived-tag', 'title'))!.length).toBeGreaterThan(40);
 
   // a pathway credits its stations' sources too
   await hash('#/pathway/pathway-lateral-corticospinal');
-  await expect.poll(sourceText, { timeout: 60_000 }).toContain('Source:');
+  await expect.poll(sourceText, { timeout: 60_000 * SLOW }).toContain('Source:');
 
   // the credit link and the toolbar button both reach the About panel
   await hash('#/structure/putamen');
-  await expect.poll(sourceText, { timeout: 60_000 }).toContain('Source:');
+  await expect.poll(sourceText, { timeout: 60_000 * SLOW }).toContain('Source:');
   await panel.locator('.source-line a.src-credit').first().click();
-  await expect.poll(() => page.evaluate(() => location.hash), { timeout: 30_000 }).toBe('#/about');
-  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText('About and credits', { timeout: 30_000 });
+  await expect.poll(() => page.evaluate(() => location.hash), { timeout: 30_000 * SLOW }).toBe('#/about');
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText('About and credits', { timeout: 30_000 * SLOW });
   await hash('#/slice');
   await page.locator('.about-btn').click();
-  await expect.poll(() => page.evaluate(() => location.hash), { timeout: 30_000 }).toBe('#/about');
-  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText('About and credits', { timeout: 30_000 });
+  await expect.poll(() => page.evaluate(() => location.hash), { timeout: 30_000 * SLOW }).toBe('#/about');
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText('About and credits', { timeout: 30_000 * SLOW });
 });
 
 // ---- interface language (English / Türkçe) ---------------------------------------
 /** boot() only waits for the manifest; the Turkish names live in the content bundle. */
 async function bootWithContent(page: Page, hash: string): Promise<void> {
   await boot(page, hash);
-  await page.waitForFunction(() => (window as unknown as { atlas: { store: { get(): { loaded: { content: boolean } } } } }).atlas.store.get().loaded.content === true, null, { timeout: 60_000 });
+  await page.waitForFunction(() => (window as unknown as { atlas: { store: { get(): { loaded: { content: boolean } } } } }).atlas.store.get().loaded.content === true, null, { timeout: 60_000 * SLOW });
 }
 
 test('#/...?lang=tr renders the interface and the structure names in Turkish', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(180_000 * SLOW);
   await bootWithContent(page, '#/structure/brainstem?lang=tr');
   await expect(page.locator('html')).toHaveAttribute('lang', 'tr');
   const panel = page.locator('#right .content:not([hidden])');
   // Turkish medical teaching names structures in Latin; the English name stays underneath
-  await expect(panel.locator('h2').first()).toContainText('Truncus encephali', { timeout: 30_000 });
+  await expect(panel.locator('h2').first()).toContainText('Truncus encephali', { timeout: 30_000 * SLOW });
   await expect(panel.locator('h2 .name-secondary').first()).toHaveText('Brainstem');
   await expect(page.locator('#toolbar')).toContainText('Sözlük');
   await expect(page.locator('#toolbar')).toContainText('Vaka soruları');
@@ -447,41 +446,41 @@ test('#/...?lang=tr renders the interface and the structure names in Turkish', a
 
   // the clinical prose comes from content.tr.json: the syndrome is named and written in Turkish and carries no English flag
   await page.goto('/#/syndrome/syn-wallenberg-lateral-medullary?lang=tr');
-  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText('Lateral medüller sendrom', { timeout: 30_000 });
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText('Lateral medüller sendrom', { timeout: 30_000 * SLOW });
   await expect(page.locator('#right .content:not([hidden])')).toContainText('Klinik tablo');
   await expect(page.locator('#right .content:not([hidden]) .tag.lang-en')).toHaveCount(0);
 
   // switching back to English drops the flags, the lang attribute and the hash parameter
   await page.locator('#locale-switch').click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page.locator('#right .content:not([hidden]) .tag.lang-en')).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.locator('#right .content:not([hidden]) .tag.lang-en')).toHaveCount(0, { timeout: 20_000 * SLOW });
   await expect(page.locator('#toolbar')).toContainText('Glossary');
   await expect.poll(() => page.evaluate(() => location.hash)).not.toMatch(/lang=/);
 });
 
 test('the L shortcut switches language and the choice survives a reload', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(180_000 * SLOW);
   await bootWithContent(page, '#/structure/putamen');
-  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/Putamen/i, { timeout: 30_000 });
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/Putamen/i, { timeout: 30_000 * SLOW });
   await page.keyboard.press('l');
-  await expect(page.locator('html')).toHaveAttribute('lang', 'tr', { timeout: 20_000 });
+  await expect(page.locator('html')).toHaveAttribute('lang', 'tr', { timeout: 20_000 * SLOW });
   await expect(page.locator('#toolbar')).toContainText('Sözlük');
   await expect.poll(() => page.evaluate(() => localStorage.getItem('atlas.locale'))).toBe('tr');
   // no hash: localStorage decides
   await page.goto('/');
-  await page.waitForFunction(() => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true, null, { timeout: 60_000 });
+  await page.waitForFunction(() => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true, null, { timeout: 60_000 * SLOW });
   await expect(page.locator('html')).toHaveAttribute('lang', 'tr');
   await page.evaluate(() => localStorage.setItem('atlas.locale', 'en'));
 });
 
 test('the contrast menu lists the T1, the T2 and every subject scan, and a linked contrast survives the first paint', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(180_000 * SLOW);
   type Win = { atlas: { manifest: { volumes: Record<string, { kind?: string; file: string }> }; store: { get(): { contrast: string; loaded: { volume: boolean } } }; uniforms: { uIntensity: { value: { image: { width: number } } } } } };
   await boot(page, '#/slice?c=t2w&ax=-2');
   const keys = await page.evaluate(() => { const v = (window as unknown as Win).atlas.manifest.volumes; return Object.keys(v).filter((k) => k === 't1w' || k === 't2w' || v[k]!.kind === 'subject'); });
   await expect.poll(() => page.locator('select.contrast option').evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value))).toEqual(keys);
   // the link chose T2; the T1 of the first paint must not replace it once both have arrived
-  await page.waitForFunction(() => (window as unknown as Win).atlas.store.get().loaded.volume === true, null, { timeout: 120_000 });
+  await page.waitForFunction(() => (window as unknown as Win).atlas.store.get().loaded.volume === true, null, { timeout: 120_000 * SLOW });
   await page.waitForTimeout(1500);
   expect(await page.evaluate(() => (window as unknown as Win).atlas.store.get().contrast)).toBe('t2w');
   const subject = keys.find((k) => k.startsWith('subject-'));
@@ -505,7 +504,7 @@ const overrides = (page: Page) => page.evaluate(() => { const s = (window as unk
 
 test('Mirror moves the lesion marker, the involved meshes, the slices and the link to the other side', async ({ page }) => {
   await boot(page, '#/syndrome/syn-aphasia-broca');
-  await expect(page.locator('#syndrome-bar')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#syndrome-bar')).toBeVisible({ timeout: 30_000 * SLOW });
   const before = await page.evaluate(() => { const a = (window as unknown as StateWin).atlas; const s = a.store.get(); return { x: a.lesion.position.x, visible: a.lesion.visible, sag: (s['slices'] as { sagittal: number }).sagittal, involved: [...(s['involved'] as Set<string>)] }; });
   expect(before.visible).toBe(true);
   expect(before.x).toBeLessThan(0);
@@ -526,26 +525,26 @@ test('leaving a syndrome, a pathway, a topic or a quiz reveal leaves the anatomy
   expect(await overrides(page)).toEqual({ hidden: [], shown: [], involved: [] });
   // a syndrome whose involved meshes include structures that are on screen by default (the cerebrum is)
   await page.evaluate(() => { location.hash = '#/syndrome/syn-aphasia-broca'; });
-  await expect(page.locator('#syndrome-bar')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#syndrome-bar')).toBeVisible({ timeout: 30_000 * SLOW });
   expect((await overrides(page)).involved.length).toBeGreaterThan(0);
   await page.keyboard.press('Escape');
-  await expect(page.locator('#syndrome-bar')).toBeHidden({ timeout: 30_000 });
+  await expect(page.locator('#syndrome-bar')).toBeHidden({ timeout: 30_000 * SLOW });
   expect(await overrides(page)).toEqual({ hidden: [], shown: [], involved: [] });
   // a pathway
   await page.evaluate(() => { location.hash = '#/pathway/pathway-anterior-corticospinal'; });
-  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/corticospinal/i, { timeout: 30_000 });
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/corticospinal/i, { timeout: 30_000 * SLOW });
   await page.evaluate(() => { location.hash = '#/slice'; });
   await expect.poll(() => overrides(page)).toEqual({ hidden: [], shown: [], involved: [] });
   // a topic
   await page.evaluate(() => { location.hash = '#/topic/topic-epilepsy-localization'; });
-  await expect.poll(() => overrides(page).then((o) => o.involved.length), { timeout: 30_000 }).toBeGreaterThan(3);
+  await expect.poll(() => overrides(page).then((o) => o.involved.length), { timeout: 30_000 * SLOW }).toBeGreaterThan(3);
   await page.evaluate(() => { location.hash = '#/slice'; });
   await expect.poll(() => overrides(page)).toEqual({ hidden: [], shown: [], involved: [] });
   // a quiz reveal
   await page.evaluate(() => { location.hash = '#/quiz'; });
-  await expect(page.locator('#right .content:not([hidden]) .opt').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#right .content:not([hidden]) .opt').first()).toBeVisible({ timeout: 30_000 * SLOW });
   await page.locator('#right .content:not([hidden]) .opt').first().click();
-  await expect.poll(() => overrides(page).then((o) => o.involved.length), { timeout: 30_000 }).toBeGreaterThan(0);
+  await expect.poll(() => overrides(page).then((o) => o.involved.length), { timeout: 30_000 * SLOW }).toBeGreaterThan(0);
   await page.evaluate(() => { location.hash = '#/slice'; });
   await expect.poll(() => overrides(page)).toEqual({ hidden: [], shown: [], involved: [] });
 });
@@ -568,7 +567,7 @@ test('a slower earlier selection cannot move the slices away from the structure 
 test('a pathway keeps its link while the reader moves slices and picks waypoints, and survives a reload', async ({ page }) => {
   await boot(page, '#/pathway/pathway-anterior-corticospinal');
   const title = page.locator('#right .content:not([hidden]) h2').first();
-  await expect(title).toContainText(/corticospinal/i, { timeout: 30_000 });
+  await expect(title).toContainText(/corticospinal/i, { timeout: 30_000 * SLOW });
   await page.mouse.click(700, 450);                    // focus the canvas so the arrow key reaches the app
   await page.keyboard.press('ArrowUp');
   await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/^#\/pathway\/pathway-anterior-corticospinal\?.*ax=/);
@@ -578,8 +577,8 @@ test('a pathway keeps its link while the reader moves slices and picks waypoints
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => location.hash)).toMatch(/^#\/pathway\/pathway-anterior-corticospinal/);
   await page.reload();
-  await page.waitForFunction(() => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true, null, { timeout: 60_000 });
-  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/corticospinal/i, { timeout: 30_000 });
+  await page.waitForFunction(() => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true, null, { timeout: 60_000 * SLOW });
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/corticospinal/i, { timeout: 30_000 * SLOW });
 });
 
 test('Share view writes the exact scene into the link, and the link reproduces it', async ({ page }) => {
@@ -611,12 +610,12 @@ test('Share view writes the exact scene into the link, and the link reproduces i
 test('quiz answers survive a reload, and the filters narrow the set', async ({ page }) => {
   await boot(page, '#/quiz');
   const opts = page.locator('#right .content:not([hidden]) .opt');
-  await expect(opts.first()).toBeVisible({ timeout: 30_000 });
+  await expect(opts.first()).toBeVisible({ timeout: 30_000 * SLOW });
   await opts.first().click();
   await expect(page.locator('#right .content:not([hidden]) .reveal')).toBeVisible();
   await page.reload();
-  await page.waitForFunction(() => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true, null, { timeout: 60_000 });
-  await expect(page.locator('#right .content:not([hidden]) .reveal')).toBeVisible({ timeout: 30_000 });
+  await page.waitForFunction(() => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true, null, { timeout: 60_000 * SLOW });
+  await expect(page.locator('#right .content:not([hidden]) .reveal')).toBeVisible({ timeout: 30_000 * SLOW });
   const filters = page.locator('#right .content:not([hidden]) .quiz-filters select');
   await filters.nth(1).selectOption('3');
   await expect(page.locator('#right .content:not([hidden]) .crumbs')).toContainText(/3\/3|zorluk 3/);

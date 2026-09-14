@@ -135,6 +135,11 @@ before a release. Run the whole list before anything is published.
   linked contrast.
 - **One e2e test is timing-sensitive.** `interaction budget` measures frame pacing and can fail on a loaded
   machine. Re-run it alone before believing it.
+- **CI's browser job is several times slower than a laptop** (no GPU: WebGL through SwiftShader; 22 minutes
+  for the 7-minute suite). Every timeout in the specs and in `playwright.config.ts` is multiplied by `SLOW`
+  (4 when `CI` is set), so write new waits as `{ timeout: N * SLOW }`. And a test may only read files the
+  released bundle ships — `cord_levels*.json` is pipeline output and is not in it, which is why the cord test
+  computes level centres from the label volume the app loads.
 - **`npm run e2e` needs a dev server with data**, except `e2e/no-data.spec.ts`, which fakes the missing
   manifest. CI's `integration` job fetches the *last released* bundle with `npm run data` and runs the whole
   suite on it, so a browser test that depends on data not yet released passes locally and fails there.

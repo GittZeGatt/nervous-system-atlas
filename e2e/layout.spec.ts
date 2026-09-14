@@ -1,5 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 
+// CI runs on a GPU-less runner where WebGL is software-rendered and everything is several times slower
+const SLOW = process.env['CI'] ? 4 : 1;
+
 // The three-column layout is 720px of panels before the 3D view gets anything, so a narrow window used to
 // squeeze the canvas to a sliver and a phone-width one pushed it off the screen entirely. Below 900px the
 // panels leave the grid and float over the canvas instead, closed by default. These tests pin that down at
@@ -9,7 +12,7 @@ const boot = async (page: Page): Promise<void> => {
   await page.goto('/');
   await page.waitForFunction(
     () => (window as unknown as { atlas?: { store: { get(): { loaded: { manifest: boolean } } } } }).atlas?.store.get().loaded.manifest === true,
-    null, { timeout: 60_000 });
+    null, { timeout: 60_000 * SLOW });
 };
 const metrics = (page: Page) => page.evaluate(() => {
   const app = document.getElementById('app')!, tb = document.getElementById('toolbar')!;
@@ -64,7 +67,7 @@ test('narrow: selecting a structure opens the detail panel', async ({ page }) =>
   await boot(page);
   expect((await metrics(page)).rightVisible).toBe(false);
   await page.goto('/#/structure/putamen');
-  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/Putamen/i, { timeout: 30_000 });
+  await expect(page.locator('#right .content:not([hidden]) h2').first()).toContainText(/Putamen/i, { timeout: 30_000 * SLOW });
   expect((await metrics(page)).rightVisible).toBe(true);
 });
 

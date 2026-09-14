@@ -44,7 +44,9 @@ same tree, so a change to any one of the three can move the version.
   narrowed to one type or difficulty or to the vignettes answered wrong; Restart clears everything.
 - **A CI job on real data.** `checks.yml` gained an `integration` job that fetches the pinned public bundle
   with `npm run data` and runs the whole browser suite against it on pushes and on demand — teaching-mode
-  exit, Mirror, a slower selection, links that survive slice moves and reloads, the share link.
+  exit, Mirror, a slower selection, links that survive slice moves and reloads, the share link. The runner
+  has no GPU, so the specs scale their timeouts by four there, and the cord test now reads the level centres
+  from the label volume the app loads rather than from a pipeline file the bundle does not ship.
 - **The counts the docs quote are checked.** `citations:check` compares the citation, source and entry counts
   in README.md and docs/content.md with the live ones and fails on drift; `--fix` rewrites them. (They had
   drifted: 2384 citations across 824 entries, not 2387 across 825.)
