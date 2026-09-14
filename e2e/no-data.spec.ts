@@ -17,7 +17,7 @@ async function expectNoDataMessage(page: Page): Promise<void> {
   const panel = page.locator('[data-testid="no-data"]');
   await expect(panel).toBeVisible({ timeout: 30_000 * SLOW });
   await expect(panel).toContainText('No atlas data found');
-  await expect(panel.locator('code')).toHaveText('npm run data');
+  await expect(panel.locator('code')).toHaveText('npm start');
   await expect(panel.locator('a')).toHaveAttribute('href', /docs\/pipeline\.md$/);
   // and it must not be the old cryptic failure
   await expect(panel).not.toContainText('Unexpected token');
@@ -44,7 +44,7 @@ test('the setup message is translated', async ({ page }) => {
   const panel = page.locator('[data-testid="no-data"]');
   await expect(panel).toBeVisible({ timeout: 30_000 * SLOW });
   await expect(panel).toContainText('Atlas verisi bulunamadı');
-  await expect(panel.locator('code')).toHaveText('npm run data');
+  await expect(panel.locator('code')).toHaveText('npm start');
 });
 
 test('a manifest that is present but corrupt still reports the generic failure', async ({ page }) => {

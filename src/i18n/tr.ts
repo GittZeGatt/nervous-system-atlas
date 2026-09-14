@@ -12,8 +12,8 @@ export const tr: Record<keyof typeof en, string> = {
   'boot.failed': 'Başlatılamadı: {message}',
   'boot.noData.title': 'Atlas verisi bulunamadı',
   'boot.noData.body': 'Yüzey ağları, MR hacimleri ve etiket tabloları depoda tutulmuyor — fazlasıyla büyükler. Yeni bir kopya bunları bir kez indirir:',
-  'boot.noData.cmd': 'npm run data',
-  'boot.noData.cmdNote': 'hazır genel paketi (yaklaşık 50 MB) v1.0.0 sürümünden indirir',
+  'boot.noData.cmd': 'npm start',
+  'boot.noData.cmdNote': 'eksik olanı kurar, hazır genel paketi (yaklaşık 50 MB) indirir ve uygulamayı başlatır',
   'boot.noData.orBuild': 'Ya da veriyi kaynak atlaslardan kendiniz üretin: {link}',
   'boot.noData.docs': 'docs/pipeline.md',
   // 'sol' ve 'sağ' aynı harfle başladığı için kısaltma tek harf olamaz.

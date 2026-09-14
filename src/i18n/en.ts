@@ -15,8 +15,8 @@ export const en = {
   'boot.failed': 'Failed to start: {message}',
   'boot.noData.title': 'No atlas data found',
   'boot.noData.body': 'The meshes, MRI volumes and label tables are not kept in the repository — they are far too large. A fresh clone fetches them once:',
-  'boot.noData.cmd': 'npm run data',
-  'boot.noData.cmdNote': 'downloads the prebuilt public bundle (about 50 MB) from the v1.0.0 release',
+  'boot.noData.cmd': 'npm start',
+  'boot.noData.cmdNote': 'installs what is missing, downloads the prebuilt public bundle (about 50 MB) and starts the app',
   'boot.noData.orBuild': 'Or build the data yourself from the source atlases: {link}',
   'boot.noData.docs': 'docs/pipeline.md',
   // Paired structures share one content entry, so the side marker has to be added from the mesh record.

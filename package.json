@@ -6,6 +6,9 @@
   "description": "3D clinical neuroanatomy atlas with MRI correlates (local web app)",
   "license": "Apache-2.0",
   "scripts": {
+    "start": "node scripts/start.ts",
+    "check": "bash scripts/check.sh",
+    "data:build": "bash scripts/build-data.sh",
     "dev": "vite --port 5173 --strictPort",
     "dev:private": "ATLAS_EDITION=private vite --port 5173 --strictPort",
     "build": "node scripts/build.ts",
