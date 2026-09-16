@@ -1,6 +1,4 @@
-<img src="icon/icon.png" alt="" width="96" align="right">
-
-# Klinik Nöroanatomi Atlası
+# <img src="icon/icon.png" alt="" height="40" align="absmiddle"> Klinik Nöroanatomi Atlası
 
 *Bu, [İngilizce README](../README.md) dosyasının Türkçesidir.*
 
