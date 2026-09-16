@@ -1,7 +1,33 @@
 # Kullanım kılavuzu
 
-Atlasın yapabildiği her şey, onu çalıştırmış biri için (çalıştırmak için [README](../README.md#klinik-nöroanatomi-atlası)).
-English: [User guide](guide.md).
+Atlasın yapabildiği her şey, onu çalıştırmış biri için ([README](README.tr.md) üç satırda oraya götürür). Bir kopyasını
+barındırmak, kendi MR'ınızı göstermek ve veriyi yeniden üretmek [geliştirici kılavuzundadır](developing.md)
+(İngilizce). English: [User guide](guide.md).
+
+## Bir bakışta
+
+| | |
+|---|---|
+| ![Derin gri çekirdeklerin boyandığı aksiyal T1 kesiti, putamen turuncu konturla işaretli, sağda içerik paneli açık](screenshots/slices-mri.webp) | ![Lezyon kipinde lateral medüller sendrom: sahne yalnızca tutulan yapılara indirgenmiş, sol medullada lezyon işareti, defisit tablosu bulguları tek tek geziyor](screenshots/syndrome-wallenberg.webp) |
+| **Kesit ve üç boyut aynı çerçevede.** MR'a tıklayarak yapıyı seçin ya da bir yapıya tıklayarak kesitleri oraya taşıyın. | **Lezyon kipi.** Sendrom, sahneyi tuttuğu yapılara indirger ve defisitleri sırayla gösterir. |
+| ![Tractus corticospinalis lateralis'in nöron zinciri, çaprazlaşması ve numaralı seyri sağ panelde](screenshots/pathway.webp) | ![Alttan bakışta kranial sinirler ve arterler; nervus trigeminus seçili, seyri, çekirdekleri ve dalları listeleniyor](screenshots/cranial-nerves.webp) |
+| **Yolaklar.** Nöron zinciri, nerede çaprazlaştığı ve her durağı tıklanabilir bir ara nokta olarak. | **Kranial sinirler.** Çekirdekler, seyir, dallar, refleksler, yatak başı testler ve lokalize edici bulgular. |
+| ![Lezyonun yerini soran bir klinik vaka, beş seçenekle](screenshots/quiz.webp) | ![Aynı sendrom sayfası Türkçe: Latince yapı adları ve makine destekli çeviri uyarısı](screenshots/turkish-syndrome.webp) |
+| **Vaka soruları.** 60 özgün vaka; yanıtlayınca ilgili yapılar üç boyutta öne çıkar. | **Türkçe.** Arayüzün tamamı ve bütün klinik metinler, yapı adları Latince. |
+
+## İçindekiler
+
+| Tür | Sayı | Not |
+|---|---|---|
+| Yapılar | 379 | derin serebral venler, kord segmentleri, loblar ve giruslar, hippokampal alt alanlar, bazal ön beyin, talamik ve hipotalamik çekirdekler, beyin sapı çekirdekleri, serebellar lobüller, ak madde traktusları, arter sulama alanları, ventriküller, meninksler, arterler, periferik ve kutanöz sinirler, otonom yapılar |
+| Kranial sinirler | 12 | çekirdekler, seyir, dallar, refleksler, yatak başı testler, lokalize edici bulgular |
+| Yolaklar | 25 | nöron zinciri, çaprazlaşma, tıklanabilir ara noktalar, düzeye göre lezyon etkileri |
+| Sendromlar | 125 | lokalizasyon, anatomik zeminiyle defisitler, taraf mantığı, görüntüleme, ayırıcı tanılar, tedavi incileri |
+| Konular | 19 | gelişim, BOS ve kan-beyin bariyeri, nörotransmitterler, uyku ve EEG, epilepsi, baş ağrısı, demans, hareket bozuklukları, nöromusküler desenler, pediatrik sendromlar, lokalizasyon, görüntüleme, inme, enfeksiyon, tümörler, lökodistrofiler, sinir hasarı, kortikal katmanlar, koma |
+| Sözlük | 205 | |
+| Vaka soruları | 60 | özgün vakalar; yanıt, ilgili yapıları üç boyutta öne çıkarır |
+| Mesh | 585 açık / 655 özel | etiket maskelerinden yeniden meshlenen MNI atlasları, VENAT venöz atlası, işaret noktalarıyla kayıtlanan BodyParts3D ve Z-Anatomy geometrisi ve hiçbir atlasın vermediği, burada kurulan meshler (iki sürümde de 12, açık sürümde 40); tam ayrıntıda 36 MB, ilk boyamada yaklaşık 3,5 MB |
+| Atıflar | 2384 | 824 kaydın tamamında, 657 açık erişimli kaynağa |
 
 ## Kesitler, traktuslar ve sulama alanları
 
@@ -60,47 +86,6 @@ Araç çubuğundaki **Görünümü paylaş**, sahneyi *aynen* bağlantıya yazar
 görünen sistemler ve yapı bazındaki istisnalar, hangi kesitlerin açık olduğu, soyma, sabitleme, kontrast ve
 açık panel. Sıradan bağlantılar kısa kalır; uzun biçim yalnızca istendiğinde yazılır.
 
-## Kendi MR'ınızı eklemek
-
-Atlas bir şablondur ve içindeki her şey — meshler, etiket hacimleri, kesitler — tek bir MNI152NLin2009cAsym
-ızgarası üzerindedir. Kişisel bir tarama bu yüzden atlasın kendisine *uyarlandığı* bir şey değildir; yapıların
-zaten hizalı olduğu bu çerçevenin *içine taşınır* ve kontrast menüsünde T1 ile T2'nin yanında belirir:
-
-```bash
-cd pipeline && uv sync --extra subject && cd ..                     # kayıt için antspyx, DICOM için dcm2niix
-uv run --project pipeline atlas-subject hasta-cd.zip --id ben
-```
-
-Elinizde ne varsa onu verin: hastanenin verdiği zip ya da klasör (DICOM — her seri
-[dcm2niix](https://github.com/rordenlab/dcm2niix) ile dönüştürülür, tüm başı kapsayan 3B T1'e benzeyen seri
-alınır, tablo yazdırılır, `--series N` ile seçim değiştirilir) ya da bir NIfTI. Ardından N4 bias düzeltmesi,
-atlasın kendi MNI T1w'sine rijit + afin + **SyN** kaydı (tam `antsRegistrationSyN` tarifi, beş ile on dakika;
-yalnızca afin kayıt girusları parsellerden milimetrelerce uzakta bırakır, kortikal etiketleri *sizin*
-sulkuslarınıza oturtan deforme edilebilir aşamadır), atlas ızgarasına yeniden örnekleme ve beyne asla
-dokunamayan, şablonun beyin maskesinden türetilmiş bir düzlemle **yüz silme** yapılır. Paylaşmadan önce
-`pipeline/qa/subjects/ben/` klasörüne, özellikle önden görülen cilt yüzeyi `skin-front.png` dosyasına bakın.
-Hacim, `pipeline/config/sources.yaml` içinde bir `subject_ben` kaydı ister (lisansı ve kimin taraması olduğunu
-söyleyen bir satır); üç denetim de yüzü silinmemiş, kaynağı belirtilmemiş ya da yeniden dağıtılamayan bir
-tarama hacmini reddeder. Taramanın kendisi depoya asla girmez. Paylaşılan bağlantı seçimi taşır:
-`#/slice?c=subject-ben&ax=-2`.
-
-## İki sürüm
-
-Atlas aynı ağaçtan iki kez derlenir.
-
-**Açık sürüm** yeniden dağıtılabilen sürümdür (kod Apache-2.0, veri ve içerik CC BY-SA 4.0) ve her yerde varsayılandır: `npm run dev` onu sunar, `npm run build` onu `dist/` içine derler ve `scripts/check-public.ts` yayımlanmadan önce bu derlemeyi denetler. **Özel sürüm** buna ek olarak, lisansı ticari olmayan kullanımla sınırlı ya da türev dosyaların aktarılmasını yasaklayan dört veri kümesini içerir; bu yüzden onu derleyen makineden hiç çıkmaz: `npm run dev:private`, `npm run build:private`.
-
-| Veri kümesi | Lisans | Neden yayımlanamaz | Açık sürümdeki karşılığı |
-|---|---|---|---|
-| Harvard-Oxford (FSL) | `FSL-NC` | inceleme bekliyor — FSL, Ağustos 2025'te CC BY-SA 4.0'a geçirdi | CerebrA/DKT kortikal parselleri (CC0) |
-| Diedrichsen serebellum atlası | `CC-BY-ND` | türev çalışmalar dağıtılamaz | kendi şablonumuzun FastSurfer CerebNet bölütlemesi (CC BY-SA 4.0) |
-| Brainstem Navigator 7 T çekirdekleri | `BrainstemNavigator-NC-ND` | türev dosyalar kurum dışına çıkamaz | Dahl locus coeruleus meta-maskesi (CC BY 4.0) ve yayımlanmış hacimlerden kurulan işaret noktası tabanlı belirteçler |
-| PAM50 kord şablonu | `PAM50-unlicensed` | deposunda hiçbir lisans yok | burada spine-generic ve Fudan tüm-omurga verisinden birleştirilen bir kord MR'ı (CC BY 4.0) |
-
-Hiçbir şey adına göre ayıklanmaz: bir veri kümesi, lisans kaydında `nc: true` ya da `no_redistribution: true` taşıyorsa açık sürümden çıkar. Bu dördü `restricted` indirme grubundadır; `atlas-download` onları yalnızca `private` dalında ya da `ATLAS_ALLOW_RESTRICTED=1` ile indirir, böylece bu dalın düz bir klonu paylaşamayacağı veriyi üretemez. Sonuçta açık sürüm özel sürümden 202 mesh eksiktir ve yerine 132 karşılık koyar: 592'ye karşı 662.
-
-Karşılıkların hiçbiri birebir kopya değildir; her birinin gerekçesi [İki sürüm](editions.md) içindedir.
-
 ## İçerik ve kaynaklar
 
 **Sözlük dışındaki her kayıt yalnızca açık erişimli kaynaklara atıf verir**: NCBI Bookshelf üzerindeki StatPearls bölümleri, PubMed Central'daki makaleler, açık lisanslı başvuru sayfaları. Yayımlanan atlasın hiçbir yerinde basılı ders kitabına ya da ödeme duvarı ardındaki bir makaleye atıf yoktur. Bugün bu, **657 kaynak üzerinden 2384 atıf** demektir ve her atıf, canlı bölümden okunarak geldiği bölümü adlandırır.
@@ -119,12 +104,14 @@ Arayüz İngilizce ve Türkçedir (`src/i18n/en.ts` ve `src/i18n/tr.ts`, 293 diz
 
 Terminoloji tablosunu, kaplama biçimini ve araçları [Türkçe sürüm](turkish-edition.md) anlatır.
 
-## Veriyi kendiniz üretmek
+## Uygulamanın ötesi
 
-`npm start` ile inen sürüm paketi üretilmiş bir çıktıdır; `npm run data:build` aynısını kaynak atlaslardan
-yeniden üretir (birkaç GB indirme, uzun bir koşu, [uv](https://docs.astral.sh/uv/) gerekir). Buna yalnızca
-meshlerin ya da hacimlerin nasıl yapıldığını değiştirmek için gerek duyarsınız; adımları ve isteğe bağlı ekleri
-[Veriyi üretmek](pipeline.md) (İngilizce), tam sürümün kısıtlı veri kümelerini [İki sürüm](editions.md) anlatır.
+Aşağıdakilerin hepsi `npm start`'tan fazlasını ister ve [geliştirici kılavuzunda](developing.md) (İngilizce) anlatılır:
+
+- **Bir kopyasını barındırmak.** `npm run build`, herhangi bir web sunucusunun sunabileceği statik bir `dist/` yazar — [Hosting a copy](developing.md#hosting-a-copy).
+- **Kendi MR'ınız kesitlerde.** Kişisel bir T1 taraması atlas uzayına kayıtlanır, yüzü silinir ve şablonun T1/T2'sinin yanında gösterilir — [Showing your own MRI](developing.md#showing-your-own-mri).
+- **Veriyi yeniden üretmek.** `npm start` ile inen paket kaynak atlaslardan yeniden üretilebilir — [Building the data yourself](developing.md#building-the-data-yourself).
+- **İki sürüm.** Açık sürüm, lisansı yeniden dağıtımı yasaklayan dört veri kümesini dışarıda bırakır ve her birinin yerine açık lisanslı veri koyar — [The two editions](developing.md#the-two-editions).
 
 ## Lisanslar ve atıf
 

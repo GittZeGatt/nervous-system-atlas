@@ -1,7 +1,7 @@
 # Content and citations
 
 How the authored entries in `content/` are written and validated, and the open-access-only citation rules and
-tooling behind them. Back to the [README](../README.md).
+tooling behind them. Back to the [developer guide](developing.md).
 
 ## Authoring content
 

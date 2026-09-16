@@ -5,7 +5,8 @@ authored clinical content in English and Turkish. Vite + TypeScript + three.js i
 `pipeline/`, and the prose as JSON in `content/`.
 
 This file is for anyone — human or agent — setting the project up or changing it. [README.md](README.md) gets
-a reader running, [docs/guide.md](docs/guide.md) is the tour of what the app does, [CONTRIBUTING.md](CONTRIBUTING.md)
+a reader running, [docs/guide.md](docs/guide.md) is the tour of what the app does,
+[docs/developing.md](docs/developing.md) the layout, the data flow and the checks, [CONTRIBUTING.md](CONTRIBUTING.md)
 the rules for changing it; this is the operating manual. The traps below are the ones that actually cost time.
 
 ## Setting up
@@ -162,7 +163,7 @@ before a release. Run the whole list before anything is published.
 - **`location.hash = x` changes the URL now and delivers `hashchange` later.** A debounced state-to-URL
   rewrite that fires in between puts the old route back and the handler then reads that, so the router only
   lands a rewrite on the hash it was scheduled from. This bit an e2e test before it bit a reader.
-- **`citations:check` also checks the counts the README and docs quote.** A content change that adds or
+- **`citations:check` also checks the counts the docs quote** (`docs/guide.md`, `docs/guide.tr.md`, `docs/content.md`). A content change that adds or
   removes a citation or an entry fails it until you run `node scripts/content/check-citations.ts --fix`.
 
 ## Adding or changing a data source

@@ -1,7 +1,7 @@
 # Building the data
 
 How `public/data/` is generated, step by step, and the registration and meshing notes behind it. Everything
-here is the pipeline in `pipeline/`; the app itself is described in the [README](../README.md).
+here is the pipeline in `pipeline/`; the rest of the developer side is in the [developer guide](developing.md).
 
 A default run of the pipeline builds the **public** edition. The four restricted datasets (Harvard-Oxford,
 the Diedrichsen cerebellar atlas, PAM50 and the Brainstem Navigator) are `group: restricted` in

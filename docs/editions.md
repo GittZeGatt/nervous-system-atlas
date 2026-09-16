@@ -1,8 +1,8 @@
 # The two editions
 
 What the public edition ships and what it leaves out, how the restricted datasets are replaced, and the
-gates that prove a build may be redistributed. Back to the [README](../README.md); the pipeline steps named
-here are described in [Building the data](pipeline.md).
+gates that prove a build may be redistributed. Back to the [developer guide](developing.md); the pipeline steps
+named here are described in [Building the data](pipeline.md).
 
 The build has two editions. The **public** edition is what may be redistributed — Apache-2.0 code, CC BY-SA 4.0 data and content — and it is the default: `npm run dev` serves it and `npm run build` builds it into `dist/`. The **private** edition is everything the pipeline can make; it stays on this machine, and `npm run dev:private` serves it and `npm run build:private` builds it into `dist-private/`.
 

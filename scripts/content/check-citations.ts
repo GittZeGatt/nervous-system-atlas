@@ -1,7 +1,7 @@
 // Fails if any content entry still carries a legacy printed-textbook citation, if a citation ref does not
 // resolve to content/bibliography/, or if a bibliography entry is not a verified free-to-read source.
 //   node scripts/content/check-citations.ts [--fix]
-// It also checks the summary counts README.md and docs/ quote against the live count; --fix rewrites them.
+// It also checks the summary counts the docs quote against the live count; --fix rewrites them.
 import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
@@ -50,10 +50,10 @@ console.log(`${cited} citations over ${bib.size} open-access sources`);
 // carry; a drift is an error here (CI runs this), and --fix rewrites the sentence in place.
 const fix = process.argv.includes('--fix');
 const DOC_COUNTS: { file: string; re: RegExp; want: number[] }[] = [
-  { file: 'README.md', re: /\| Citations \| (\d+) \| to (\d+) open-access sources, across all (\d+) entries \|/d, want: [cited, bib.size, entries] },
+  { file: 'docs/guide.md', re: /\| Citations \| (\d+) \| to (\d+) open-access sources, across all (\d+) entries \|/d, want: [cited, bib.size, entries] },
   { file: 'docs/guide.md', re: /\*\*(\d+) citations over (\d+) sources\*\*/d, want: [cited, bib.size] },
   { file: 'docs/guide.md', re: /All (\d+) entries' clinical prose is translated/d, want: [entries] },
-  { file: 'README.md', re: /\| Atıflar \| (\d+) \| (\d+) kaydın tamamında, (\d+) açık erişimli kaynağa \|/d, want: [cited, entries, bib.size] },
+  { file: 'docs/guide.tr.md', re: /\| Atıflar \| (\d+) \| (\d+) kaydın tamamında, (\d+) açık erişimli kaynağa \|/d, want: [cited, entries, bib.size] },
   { file: 'docs/guide.tr.md', re: /\*\*(\d+) kaynak üzerinden (\d+) atıf\*\*/d, want: [bib.size, cited] },
   { file: 'docs/guide.tr.md', re: /\n(\d+) kaydın klinik metinlerinin tamamı da çevrilmiştir/d, want: [entries] },
   { file: 'docs/content.md', re: /\*\*(\d+) sources — /d, want: [bib.size] },

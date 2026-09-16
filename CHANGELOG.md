@@ -62,12 +62,15 @@ same tree, so a change to any one of the three can move the version.
 
 ### Changed
 
-- **The documentation is split by reader.** The README is for someone who wants the atlas running: a
-  three-line quick start, what it looks like, what is in it, licences, and where to go next — in English and
-  Turkish, a third of its former length. Everything it used to explain in full moved to a user guide
-  (`docs/guide.md`, `docs/guide.tr.md`): features, keyboard shortcuts, links and Share view, adding your own
-  MRI, the two editions, content and citations, the Turkish edition, limitations and roadmap. Contributors have
-  CONTRIBUTING.md and AGENTS.md; the pipeline has docs/pipeline.md and docs/editions.md.
+- **The documentation is split by reader.** The README is sixty lines: the three-line quick start at the
+  top, one screenshot, six bullets, the disclaimer and a table saying which document to read next; its Turkish
+  mirror is `docs/README.tr.md`. The user guide (`docs/guide.md`, `docs/guide.tr.md`) has everything about
+  using the app — the gallery, what is in it, features, shortcuts, links and Share view, the Turkish edition,
+  licences, limitations. A new developer guide (`docs/developing.md`) has everything past `npm start`:
+  prerequisites, the three commands, where things are, how the data gets there, hosting a copy, showing your
+  own MRI, building the data, the two editions, the checks and what CI runs. CONTRIBUTING.md is now only the
+  rules — branches, what is never committed, content and translation rules, what a pull request needs — and
+  AGENTS.md stays the operating manual.
 
 ### Fixed
 

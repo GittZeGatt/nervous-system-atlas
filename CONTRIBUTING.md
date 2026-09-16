@@ -9,53 +9,24 @@ Code is Apache-2.0; the authored content in `content/` and the generated data in
 `public/data/` are CC BY-SA 4.0. By opening a pull request you agree that your
 contribution ships under those licences.
 
-Read [`README.md`](README.md) and the [user guide](docs/guide.md) first — they
-explain what the atlas is and does; [`docs/pipeline.md`](docs/pipeline.md) and
-[`docs/editions.md`](docs/editions.md) explain how the data is built and why the
-meshes are where they are. This file is about working on it; [`AGENTS.md`](AGENTS.md)
-is the operating manual with the traps that cost time. Security, licence and redistribution reports go to
-[`SECURITY.md`](SECURITY.md).
+This file is the rules: which branch takes what, what must never be committed, what a content or
+translation change has to satisfy, and what a pull request should look like. Setting the project up, the
+layout of the repository, the checks and how the data is built are in the
+[developer guide](docs/developing.md); [`AGENTS.md`](AGENTS.md) is the operating manual with the traps that
+cost time. Security, licence and redistribution reports go to [`SECURITY.md`](SECURITY.md).
 
 ---
 
-## Prerequisites
-
-| | |
-|---|---|
-| **Node 22+ and npm** | the app, the content build and every `npm run` check. `package-lock.json` is committed — use `npm ci`, not `npm install`. |
-| **[uv](https://docs.astral.sh/uv/)** | the Python pipeline in `pipeline/` is a uv project (`requires-python = ">=3.12,<3.13"`). You only need it if you are regenerating data. |
-| **Python 3.12+** | the standalone tools under `tools/` (`tools/i18n/prose.py`, `tools/cite/*.py`). `prose.py` is pure standard library — plain `python3` is enough, no venv. |
-| **Playwright chromium** | `npx playwright install chromium`, for `npm run e2e`. |
-| **Blender `bpy`** | only if you touch the Z-Anatomy export (`blender/.venv`, see the README). |
-
-## Getting the generated data
-
-**A fresh clone has no `public/data/`.** Meshes, MRI volumes, label tables and
-`manifest.json` are built by the pipeline from downloaded source atlases and are
-gitignored, because they are large and fully regenerable. `npm start` fetches the
-released bundle (49 MB, checksum-pinned) the first time and serves the app; `npm run
-data` fetches without serving. Without the data the app boots to a message saying so.
-
-What *does* work in a bare clone, straight after `npm ci`: `npm run typecheck`,
-`npm run content:validate`, `npm run citations:check`, `npm run notice --
---check`, `npm run build`, the unit test files that do not read the data (the
-others skip themselves), and `python3 tools/i18n/prose.py check`. That is exactly
-the set the CI workflow's `node` job runs; its `integration` job then fetches the
-released bundle and runs the browser tests on it.
-
-To build the data yourself — only needed to change how the meshes or volumes
-are made:
+## Setting up
 
 ```bash
-npm run data:build     # uv sync → atlas-build (download → volumes → register → meshes → labels → manifest → QA) → check-data → content
-npm start
+npm start                  # installs, fetches the 49 MB data bundle once, serves http://localhost:5173
+npm run check -- --quick   # the checks that run in about a minute; drop --quick before a pull request
 ```
 
-This downloads several GB and takes a while. Individual steps and the optional
-extras (Z-Anatomy, the public-edition cord MRI, the manually downloaded
-Brainstem Navigator toolkit) are documented in [`docs/pipeline.md`](docs/pipeline.md).
-If you only want to work on text, you can skip the pipeline entirely and use the
-content checks — they do not need the data.
+A fresh clone has no `public/data/`: the data is generated and fetched, never committed. The
+[developer guide](docs/developing.md) covers the prerequisites, what works without the data, building the
+data yourself and every individual check.
 
 ## The two branches
 
@@ -236,37 +207,18 @@ Structure names come from a separate terminology table
 reviewer's and survives regeneration). `fetch` needs the cache under
 `reference/` and network access, so it is a maintainer job, not a routine one.
 
-## Checks
-
-One command runs the whole suite, in the order the release checklist uses, and
-skips what the machine cannot run (no `public/data/`, no `uv`, no Playwright
-chromium), saying so in the summary:
+## Before you open a pull request
 
 ```bash
-npm run check              # everything; about ten minutes with the browser tests
-npm run check -- --quick   # without the build and the browser tests; about a minute
+npm run check              # everything the machine can run, in the release order; about ten minutes with the browser tests
 ```
 
-What it runs, if you want one step on its own:
-
-```bash
-npm run check-tree                                # no restricted/private/generated files committed
-npm run typecheck
-npm test                                          # vitest
-npm run content:validate
-npm run citations:check                           # also the counts README.md and docs/ quote (--fix rewrites them)
-node scripts/check-data.ts                        # needs public/data/ (--all: both manifests)
-npm run notice -- --check                         # NOTICE is generated; never edit it by hand
-uv run --project pipeline atlas-qa                # pipeline data gates; needs pipeline/work/
-npx playwright install chromium && npm run e2e    # browser tests against the dev server
-npm run build                                     # builds dist/ and runs the redistribution gate over it
-python3 tools/i18n/prose.py check                 # Turkish overlays against the English entries
-```
-
-`.github/workflows/checks.yml` runs the subset that works without
-`public/data/`, then the browser tests on the last released bundle. The build
-gate over data that is not yet released, `check-data` and `atlas-qa` are on you
-locally.
+It skips what the machine lacks and says so. CI then runs the checks that work without generated data and
+the browser suite on the last released bundle; the build gate over unreleased data, `check-data` and
+`atlas-qa` only run locally, so run the full suite before you push, not just the quick one. A content change
+that adds or removes a citation fails `citations:check` until the counts the docs quote are refreshed with
+`node scripts/content/check-citations.ts --fix`; an English prose edit fails `prose.py check` until its
+Turkish overlay is redone (see above). Say in the pull request which of these you ran.
 
 ## Commit messages
 

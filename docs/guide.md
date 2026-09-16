@@ -1,7 +1,33 @@
 # User guide
 
-Everything the atlas can do, for someone who has it running (see the [README](../README.md) for that).
-Türkçe: [Kullanım kılavuzu](guide.tr.md).
+Everything the atlas can do, for someone who has it running (the [README](../README.md) gets you there in three
+lines). Hosting a copy, showing your own MRI and regenerating the data are in the
+[developer guide](developing.md). Türkçe: [Kullanım kılavuzu](guide.tr.md).
+
+## At a glance
+
+| | |
+|---|---|
+| ![An axial T1 slice with the deep grey nuclei painted on it and the putamen outlined in orange, its content panel open on the right](screenshots/slices-mri.webp) | ![The lateral medullary syndrome in lesion mode: the scene dimmed to the involved structures, the lesion marker on the left medulla, and the deficit table stepping through the signs](screenshots/syndrome-wallenberg.webp) |
+| **Slices and 3D in one frame.** Click the MRI to select a structure, or a structure to move the slices. | **Lesion mode.** A syndrome dims the scene to what it involves and steps through its deficits. |
+| ![The lateral corticospinal tract with its neuron chain, decussation and numbered course in the right-hand panel](screenshots/pathway.webp) | ![The cranial nerves seen from below with the arteries, the trigeminal nerve selected and its course, nuclei and branches listed](screenshots/cranial-nerves.webp) |
+| **Pathways.** Neuron chain, where it crosses, and every station as a clickable waypoint. | **Cranial nerves.** Nuclei, course, branches, reflexes, bedside tests and localising signs. |
+| ![A clinical vignette asking where the lesion is, with five answer options](screenshots/quiz.webp) | ![The same syndrome page in Turkish, with Latin structure names and the machine-assisted translation notice along the foot of the view](screenshots/turkish-syndrome.webp) |
+| **Quiz.** 60 original vignettes; answering spotlights the structures in 3D. | **Turkish.** The whole interface and all the clinical prose, structures named in Latin. |
+
+## What is in it
+
+| Kind | Count | Notes |
+|---|---|---|
+| Structures | 379 | deep cerebral veins, cord segments, lobes and gyri, hippocampal subfields, basal forebrain, thalamic and hypothalamic nuclei, brainstem nuclei, cerebellar lobules, white-matter tracts, arterial territories, ventricles, meninges, arteries, peripheral and cutaneous nerves, autonomic |
+| Cranial nerves | 12 | nuclei, course, branches, reflexes, bedside tests, localising signs |
+| Pathways | 25 | neuron chain, decussation, clickable waypoints, lesion effects by level |
+| Syndromes | 125 | localisation, deficits with substrates, crossing logic, imaging, mimics, management pearls |
+| Topics | 19 | development, CSF and the blood–brain barrier, neurotransmitters, sleep and EEG, epilepsy, headache, dementia, movement disorders, neuromuscular patterns, paediatric syndromes, localisation, imaging, stroke, infection, tumours, leukodystrophies, nerve injury, cortical layers, coma |
+| Glossary | 205 | |
+| Quiz | 60 | original vignettes; the answer spotlights the structures in 3D |
+| Meshes | 585 public / 655 private | MNI atlases remeshed from label masks, the VENAT venous atlas, BodyParts3D and Z-Anatomy geometry registered by landmarks, and meshes constructed here from geometry no atlas provides (12 in both editions, 40 in the public one); 36 MB at full detail, about 3.5 MB on first paint |
+| Citations | 2384 | to 657 open-access sources, across all 824 entries |
 
 ## Sections, tracts and territories
 
@@ -25,7 +51,7 @@ slices to it.
 - **3D view.** Orbit, pan and zoom toward the cursor; click a mesh or the MRI slice to select, double-click to frame it; eight camera presets on keys `1`–`8`. Physically based materials with an anatomical palette, and a **Quality** switch for ambient occlusion, soft shadows and anti-aliasing.
 - **Slices.** Axial, coronal and sagittal with T1/T2, peel modes, arterial-territory tint, label outlines and an "all labels" paint; the cord MRI switches itself on as soon as a slice reaches the foramen magnum, names the spinal level under the cursor and lets you click one to select that cord segment.
 - **Syndrome mode.** `#/syndrome/<id>` dims the scene, highlights the involved structures, places the lesion marker and steps through the deficits; **Mirror** moves the lesion to the other side.
-- **Your own MRI.** A personal T1 scan can be registered into the atlas space and shown on the slices next to the template's T1/T2, with every mesh and label already lined up on it — see [Adding your own MRI](#adding-your-own-mri). Defaced before it ships, always.
+- **Your own MRI.** A personal T1 scan can be registered into the atlas space and shown on the slices next to the template's T1/T2, with every mesh and label already lined up on it — see [Showing your own MRI](developing.md#showing-your-own-mri) in the developer guide. Defaced before it ships, always.
 - **Two languages.** English and Turkish, switched with the **TR / EN** button or `L`, kept in the URL so a link opens in the language it was copied in.
 - **Everything addressable.** `#/structure/<id>`, `#/pathway/<id>`, `#/syndrome/<id>?step=n&side=l`, `#/topic/<id>`, `#/glossary`, `#/quiz`, `#/about`. Press `?` for the shortcuts.
 - **Share view.** The toolbar's **Share view** copies a link that reproduces the scene exactly — camera, visible structures, slices, peels, contrast, open panel — where a plain link carries only the route and the slice positions.
@@ -63,45 +89,6 @@ always a link to roughly what you see.
 target, the visible systems and per-structure overrides, which slices are on, the peels, the pin, the contrast
 and the open panel. Ordinary links stay short; the long form is only written when you ask for it.
 
-## Adding your own MRI
-
-The atlas is a template, and everything in it — meshes, label volumes, slices — lives on one MNI152NLin2009cAsym
-grid. A personal scan is therefore not something the atlas adapts *to*; it is carried *into* that frame, where the
-structures already line up, and appears in the contrast menu next to T1 and T2:
-
-```bash
-cd pipeline && uv sync --extra subject && cd ..                     # antspyx for the registration, dcm2niix for DICOM
-uv run --project pipeline atlas-subject path/to/patient-cd.zip --id me
-```
-
-Give it what you have: the zip or folder a hospital hands out (DICOM — every series is converted with
-[dcm2niix](https://github.com/rordenlab/dcm2niix), the one that looks like a whole-head 3D T1 is taken, the
-table is printed, `--series N` overrides), or a NIfTI. It then does N4 bias correction, rigid + affine + **SyN** registration onto the atlas's own MNI T1w — the full `antsRegistrationSyN` recipe, five to ten minutes (affine alone
-leaves the gyri millimetres off the parcels; the deformable stage is what puts the cortical labels on *your*
-sulci), a resample onto the atlas grid, and **defacing** with a plane derived from the template's brain mask
-that cannot cut brain. Look at `pipeline/qa/subjects/me/` — especially `skin-front.png`, the skin surface seen
-from the front — before you share anything. The volume needs a `subject_me` entry in
-`pipeline/config/sources.yaml` (its licence and a line saying whose scan it is), and the three guards refuse a
-subject volume that is undefaced, unattributed or not redistributable. The scan itself never enters the
-repository. A shared link carries the choice: `#/slice?c=subject-me&ax=-2`.
-
-## The two editions
-
-The atlas is built twice from the same tree.
-
-The **public edition** is what may be redistributed — Apache-2.0 code, CC BY-SA 4.0 data and content — and it is the default everywhere: `npm run dev` serves it, `npm run build` builds it into `dist/`, and `scripts/check-public.ts` gates that build before you can publish it. The **private edition** additionally contains four datasets whose licence is non-commercial or forbids passing derived files on, so it never leaves the machine that built it: `npm run dev:private`, `npm run build:private`.
-
-| Dataset | Licence | Why it cannot ship | Replaced in the public edition by |
-|---|---|---|---|
-| Harvard-Oxford (FSL) | `FSL-NC` | held back pending review — FSL relicensed it to CC BY-SA 4.0 in Aug 2025 | CerebrA/DKT cortical parcels (CC0) |
-| Diedrichsen cerebellar atlas | `CC-BY-ND` | no derivatives may be distributed | a FastSurfer CerebNet segmentation of our own template (CC BY-SA 4.0) |
-| Brainstem Navigator 7 T nuclei | `BrainstemNavigator-NC-ND` | derived files may not leave the organisation | the Dahl locus coeruleus meta-mask (CC BY 4.0) and landmark-anchored markers built from published volumes |
-| PAM50 cord template | `PAM50-unlicensed` | the repository ships no licence at all | a cord MRI composed here from spine-generic and Fudan whole-spine data (CC BY 4.0) |
-
-Nothing is special-cased by name: a dataset leaves the public edition when its licence record carries `nc: true` or `no_redistribution: true`. Those four sit in the `restricted` download group, which `atlas-download` fetches only on the `private` branch or with `ATLAS_ALLOW_RESTRICTED=1`, so a plain clone of this branch cannot build data it may not share. That leaves the public edition 202 meshes short of the private one and puts 132 replacements back, for 592 against 662.
-
-The substitutions are worth reading about — none of them is a like-for-like copy, and the reasoning for each is in [The two editions](editions.md).
-
 ## Content and citations
 
 **Every non-glossary entry cites open-access sources only**: StatPearls chapters on the NCBI Bookshelf, articles in PubMed Central, openly licensed reference pages. No printed textbook is cited anywhere in the shipped atlas, and no paywalled article. Today that is **2384 citations over 657 sources**, and a citation names the section it came from, read from the live chapter.
@@ -120,12 +107,14 @@ All 824 entries' clinical prose is translated too, as overlays under `content/i1
 
 [The Turkish edition](turkish-edition.md) covers the terminology table, the overlay format and the tooling.
 
-## Building the data yourself
+## Beyond the app
 
-The release bundle that `npm start` fetches is generated; `npm run data:build` regenerates it from the source
-atlases (several GB of downloads, a long run, needs [uv](https://docs.astral.sh/uv/)). You only need this to
-change how the meshes or volumes are made — [Building the data](pipeline.md) describes the steps and the
-optional extras, and [the two editions](editions.md) covers the restricted datasets of the full edition.
+Everything below needs more than `npm start` and lives in the [developer guide](developing.md):
+
+- **Hosting a copy.** `npm run build` writes a static `dist/` that any web server can serve — [Hosting a copy](developing.md#hosting-a-copy).
+- **Your own MRI on the slices.** A personal T1 scan can be registered into the atlas space, defaced and shown next to the template's T1/T2 — [Showing your own MRI](developing.md#showing-your-own-mri).
+- **Regenerating the data.** The bundle `npm start` downloads can be rebuilt from the source atlases — [Building the data yourself](developing.md#building-the-data-yourself).
+- **The two editions.** The public edition leaves out four datasets whose licences forbid redistribution and substitutes openly licensed data for each — [The two editions](developing.md#the-two-editions).
 
 ## Licences and attribution
 

@@ -9,7 +9,7 @@
 # was verified to pass in a fresh `git clone` + `npm ci` with no generated data;
 # the ones that need the data are listed at the bottom of this file and must be
 # run locally before a release. CI is therefore a subset of the suite in
-# README.md ("Checks") — a green run here does not mean the atlas builds.
+# docs/developing.md ("Checks") — a green run here does not mean the atlas builds.
 
 name: checks
 

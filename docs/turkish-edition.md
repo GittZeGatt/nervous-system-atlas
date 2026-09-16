@@ -1,7 +1,7 @@
 # The Turkish edition
 
 The Turkish interface, the clinical-prose overlays and the terminology table that decides which FIPAT term
-every entry carries. Back to the [README](../README.md).
+every entry carries. Back to the [developer guide](developing.md).
 
 The interface exists in English and Turkish. The **TR / EN** button in the toolbar (shortcut `L`) switches the language; the choice is kept in the URL hash (`#/structure/brainstem?lang=tr`, so a link opens in the language it was copied in) and in `localStorage`, and a first visit follows the browser language. Every interface string lives in `src/i18n/en.ts` and `src/i18n/tr.ts` (289 keys; the Turkish table is typed against the English one, so a missing translation fails `npm run typecheck`, and `tests/i18n.test.ts` checks that the placeholders agree). In Turkish mode, structures, cranial nerves and pathways are named the way Turkish medical teaching names them, by their Latin term (`names.tr`, falling back to `latin`), with the English name as a secondary line in the panels, the tree and the search results; Turkish synonyms from Wikidata and Turkish Wikipedia are searchable but never displayed. Clinical prose (structure text, syndromes, topics, glossary, quiz) is translated too (see below); an entry whose translation is missing or stale carries a small *English* tag in Turkish mode; entries without a FIPAT concept (arterial territories, gaze pathways, the envelope) keep their English name in both languages. The About panel's disclaimer and credits are in both languages. `node scripts/shots-tr.mjs` captures the Turkish interface from the dev server into `qa/shots/tr-ui/`.
 
