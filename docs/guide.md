@@ -4,17 +4,6 @@ Everything the atlas can do, for someone who has it running (the [README](../REA
 lines). Hosting a copy, showing your own MRI and regenerating the data are in the
 [developer guide](developing.md). Türkçe: [Kullanım kılavuzu](guide.tr.md).
 
-## At a glance
-
-| | |
-|---|---|
-| ![An axial T1 slice with the deep grey nuclei painted on it and the putamen outlined in orange, its content panel open on the right](screenshots/slices-mri.webp) | ![The lateral medullary syndrome in lesion mode: the scene dimmed to the involved structures, the lesion marker on the left medulla, and the deficit table stepping through the signs](screenshots/syndrome-wallenberg.webp) |
-| **Slices and 3D in one frame.** Click the MRI to select a structure, or a structure to move the slices. | **Lesion mode.** A syndrome dims the scene to what it involves and steps through its deficits. |
-| ![The lateral corticospinal tract with its neuron chain, decussation and numbered course in the right-hand panel](screenshots/pathway.webp) | ![The cranial nerves seen from below with the arteries, the trigeminal nerve selected and its course, nuclei and branches listed](screenshots/cranial-nerves.webp) |
-| **Pathways.** Neuron chain, where it crosses, and every station as a clickable waypoint. | **Cranial nerves.** Nuclei, course, branches, reflexes, bedside tests and localising signs. |
-| ![A clinical vignette asking where the lesion is, with five answer options](screenshots/quiz.webp) | ![The same syndrome page in Turkish, with Latin structure names and the machine-assisted translation notice along the foot of the view](screenshots/turkish-syndrome.webp) |
-| **Quiz.** 60 original vignettes; answering spotlights the structures in 3D. | **Turkish.** The whole interface and all the clinical prose, structures named in Latin. |
-
 ## What is in it
 
 | Kind | Count | Notes |

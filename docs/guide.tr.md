@@ -4,17 +4,6 @@ Atlasın yapabildiği her şey, onu çalıştırmış biri için ([README](READM
 barındırmak, kendi MR'ınızı göstermek ve veriyi yeniden üretmek [geliştirici kılavuzundadır](developing.md)
 (İngilizce). English: [User guide](guide.md).
 
-## Bir bakışta
-
-| | |
-|---|---|
-| ![Derin gri çekirdeklerin boyandığı aksiyal T1 kesiti, putamen turuncu konturla işaretli, sağda içerik paneli açık](screenshots/slices-mri.webp) | ![Lezyon kipinde lateral medüller sendrom: sahne yalnızca tutulan yapılara indirgenmiş, sol medullada lezyon işareti, defisit tablosu bulguları tek tek geziyor](screenshots/syndrome-wallenberg.webp) |
-| **Kesit ve üç boyut aynı çerçevede.** MR'a tıklayarak yapıyı seçin ya da bir yapıya tıklayarak kesitleri oraya taşıyın. | **Lezyon kipi.** Sendrom, sahneyi tuttuğu yapılara indirger ve defisitleri sırayla gösterir. |
-| ![Tractus corticospinalis lateralis'in nöron zinciri, çaprazlaşması ve numaralı seyri sağ panelde](screenshots/pathway.webp) | ![Alttan bakışta kranial sinirler ve arterler; nervus trigeminus seçili, seyri, çekirdekleri ve dalları listeleniyor](screenshots/cranial-nerves.webp) |
-| **Yolaklar.** Nöron zinciri, nerede çaprazlaştığı ve her durağı tıklanabilir bir ara nokta olarak. | **Kranial sinirler.** Çekirdekler, seyir, dallar, refleksler, yatak başı testler ve lokalize edici bulgular. |
-| ![Lezyonun yerini soran bir klinik vaka, beş seçenekle](screenshots/quiz.webp) | ![Aynı sendrom sayfası Türkçe: Latince yapı adları ve makine destekli çeviri uyarısı](screenshots/turkish-syndrome.webp) |
-| **Vaka soruları.** 60 özgün vaka; yanıtlayınca ilgili yapılar üç boyutta öne çıkar. | **Türkçe.** Arayüzün tamamı ve bütün klinik metinler, yapı adları Latince. |
-
 ## İçindekiler
 
 | Tür | Sayı | Not |

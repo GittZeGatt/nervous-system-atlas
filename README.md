@@ -23,14 +23,16 @@ The first run installs the dependencies and downloads the atlas data (49 MB), th
 
 ![The atlas on first paint: the cortical surface and the vessels in the 3D view, the structure tree on the left, the slice controls along the foot of the window](docs/screenshots/overview.webp)
 
-## What it does
+## What it looks like
 
-- **Slices and 3D in one frame.** Click the MRI to select a structure, or a structure to move the slices to it. Below the foramen magnum the slices continue into a spinal cord MRI.
-- **Lesion mode.** A syndrome dims the scene to what it involves, places the lesion marker and steps through its deficits, with the crossing logic spelled out. **Mirror** moves it to the other side.
-- **Pathways and cranial nerves.** Neuron chains, decussations, nuclei, course, branches, reflexes and bedside tests, every station a clickable waypoint.
-- **Topics, glossary and quiz.** Clinical topics from development to coma, a glossary, and original vignettes whose answers light up the structures in 3D.
-- **Turkish edition.** The whole interface and all the clinical prose, with structures named in Latin.
-- **Open sources only.** Every entry cites sources anyone can read for free, and the About panel credits every dataset the meshes come from.
+| | |
+|---|---|
+| ![An axial T1 slice with the deep grey nuclei painted on it and the putamen outlined in orange, its content panel open on the right](docs/screenshots/slices-mri.webp) | ![The lateral medullary syndrome in lesion mode: the scene dimmed to the involved structures, the lesion marker on the left medulla, and the deficit table stepping through the signs](docs/screenshots/syndrome-wallenberg.webp) |
+| **Slices and 3D in one frame.** Click the MRI to select a structure, or a structure to move the slices. | **Lesion mode.** A syndrome dims the scene to what it involves and steps through its deficits. |
+| ![The lateral corticospinal tract with its neuron chain, decussation and numbered course in the right-hand panel](docs/screenshots/pathway.webp) | ![The cranial nerves seen from below with the arteries, the trigeminal nerve selected and its course, nuclei and branches listed](docs/screenshots/cranial-nerves.webp) |
+| **Pathways.** Neuron chain, where it crosses, and every station as a clickable waypoint. | **Cranial nerves.** Nuclei, course, branches, reflexes, bedside tests and localising signs. |
+| ![A clinical vignette asking where the lesion is, with five answer options](docs/screenshots/quiz.webp) | ![The same syndrome page in Turkish, with Latin structure names and the machine-assisted translation notice along the foot of the view](docs/screenshots/turkish-syndrome.webp) |
+| **Quiz.** 60 original vignettes; answering spotlights the structures in 3D. | **Turkish.** The whole interface and all the clinical prose, structures named in Latin. |
 
 > **Not for clinical use.** This is an educational reference. Its structures are group-average templates and a registered specimen, not any patient's anatomy, and its clinical text is a teaching summary that may be incomplete, out of date or wrong. Nothing in it is medical advice; clinical decisions belong to qualified clinicians using current guidelines and the patient's own findings.
 

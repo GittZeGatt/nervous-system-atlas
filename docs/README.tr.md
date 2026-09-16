@@ -24,14 +24,16 @@ npm start
 
 ![Atlasın açılış görünümü: üç boyutlu pencerede korteks yüzeyi ve damarlar, solda yapı ağacı, altta kesit denetimleri](screenshots/overview.webp)
 
-## Neler yapar
+## Nasıl görünüyor
 
-- **Kesit ve üç boyut aynı çerçevede.** MR'a tıklayarak yapıyı seçin ya da bir yapıya tıklayarak kesitleri oraya taşıyın. Foramen magnumun altında kesitler bir spinal kord MR'ına devam eder.
-- **Lezyon kipi.** Sendrom, sahneyi tuttuğu yapılara indirger, lezyon işaretini yerleştirir ve defisitleri taraf mantığıyla birlikte sırayla gösterir. **Yansıt** lezyonu diğer tarafa taşır.
-- **Yolaklar ve kranial sinirler.** Nöron zincirleri, çaprazlaşmalar, çekirdekler, seyir, dallar, refleksler ve yatak başı testler; her durak tıklanabilir bir ara nokta.
-- **Konular, sözlük ve vaka soruları.** Gelişimden komaya klinik konular, bir sözlük ve yanıtı ilgili yapıları üç boyutta öne çıkaran özgün vakalar.
-- **Türkçe sürüm.** Arayüzün tamamı ve bütün klinik metinler, yapı adları Latince.
-- **Yalnızca açık kaynaklar.** Her kayıt, herkesin ücretsiz okuyabileceği kaynaklara atıf verir; Hakkında paneli meshlerin geldiği her veri kümesini adlandırır.
+| | |
+|---|---|
+| ![Derin gri çekirdeklerin boyandığı aksiyal T1 kesiti, putamen turuncu konturla işaretli, sağda içerik paneli açık](screenshots/slices-mri.webp) | ![Lezyon kipinde lateral medüller sendrom: sahne yalnızca tutulan yapılara indirgenmiş, sol medullada lezyon işareti, defisit tablosu bulguları tek tek geziyor](screenshots/syndrome-wallenberg.webp) |
+| **Kesit ve üç boyut aynı çerçevede.** MR'a tıklayarak yapıyı seçin ya da bir yapıya tıklayarak kesitleri oraya taşıyın. | **Lezyon kipi.** Sendrom, sahneyi tuttuğu yapılara indirger ve defisitleri sırayla gösterir. |
+| ![Tractus corticospinalis lateralis'in nöron zinciri, çaprazlaşması ve numaralı seyri sağ panelde](screenshots/pathway.webp) | ![Alttan bakışta kranial sinirler ve arterler; nervus trigeminus seçili, seyri, çekirdekleri ve dalları listeleniyor](screenshots/cranial-nerves.webp) |
+| **Yolaklar.** Nöron zinciri, nerede çaprazlaştığı ve her durağı tıklanabilir bir ara nokta olarak. | **Kranial sinirler.** Çekirdekler, seyir, dallar, refleksler, yatak başı testler ve lokalize edici bulgular. |
+| ![Lezyonun yerini soran bir klinik vaka, beş seçenekle](screenshots/quiz.webp) | ![Aynı sendrom sayfası Türkçe: Latince yapı adları ve makine destekli çeviri uyarısı](screenshots/turkish-syndrome.webp) |
+| **Vaka soruları.** 60 özgün vaka; yanıtlayınca ilgili yapılar üç boyutta öne çıkar. | **Türkçe.** Arayüzün tamamı ve bütün klinik metinler, yapı adları Latince. |
 
 > **Klinik kullanım için değildir.** Bu atlas eğitim amaçlı bir başvuru kaynağıdır. İçindeki yapılar grup ortalaması şablonlar ve kayıtlanmış bir örnektir, hiçbir hastanın kendi anatomisi değildir; klinik metinleri ise eksik, güncelliğini yitirmiş ya da yanlış olabilecek öğretim özetleridir. Buradaki hiçbir bilgi tıbbi tavsiye değildir; klinik kararlar, güncel kılavuzları ve hastanın kendi bulgularını kullanan yetkin hekimlere aittir.
 
