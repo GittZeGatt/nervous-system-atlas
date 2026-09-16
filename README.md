@@ -1,3 +1,5 @@
+<img src="docs/icon/icon.png" alt="" width="96" align="right">
+
 # Clinical Neuroanatomy Atlas
 
 **English** · [Türkçe](#klinik-nöroanatomi-atlası)
@@ -78,6 +80,8 @@ Pull requests are welcome — read [CONTRIBUTING.md](CONTRIBUTING.md) first, esp
 ---
 
 <a id="klinik-nöroanatomi-atlası"></a>
+
+<img src="docs/icon/icon.png" alt="" width="96" align="right">
 
 # Klinik Nöroanatomi Atlası
 

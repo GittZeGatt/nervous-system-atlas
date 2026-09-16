@@ -54,6 +54,9 @@ same tree, so a change to any one of the three can move the version.
   the data bundle once and serves the app; `npm run check` runs the whole check suite in order, skips what the
   machine cannot run and prints a summary (`--quick` leaves out the build and the browser tests);
   `npm run data:build` runs the pipeline end to end. The in-app "no data" message now says `npm start`.
+- **An icon.** A brain with the three orthogonal MRI planes, in `docs/icon/` as the app icon, a monochrome
+  version, a small-size version and the bare symbol; the app has a favicon and an Apple touch icon, and the
+  README carries it.
 - **Keyboard access.** The search box is a combobox over a listbox (arrow keys move `aria-activedescendant`,
   Enter takes the result) and a pathway's steps are buttons, reachable with Tab.
 
